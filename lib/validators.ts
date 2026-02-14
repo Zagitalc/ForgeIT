@@ -9,6 +9,8 @@ export const createJobSchema = z.object({
   options: z
     .object({
       namingPattern: z.string().max(120).optional(),
+      outputSortBy: z.union([z.literal("name"), z.literal("date")]).optional(),
+      outputSortDirection: z.union([z.literal("asc"), z.literal("desc")]).optional(),
       splitPages: z.string().max(120).optional(),
       rotateDegrees: z.union([z.literal(90), z.literal(180), z.literal(270)]).optional(),
       imageFormat: z.union([z.literal("jpeg"), z.literal("png"), z.literal("webp")]).optional(),

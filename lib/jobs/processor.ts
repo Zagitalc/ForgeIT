@@ -171,6 +171,8 @@ export async function processJob(job: EnqueuedJob): Promise<void> {
       await createOutputZip({
         inputNames: job.files.map((file) => file.originalName),
         outputPaths: outputFiles,
+        sourceModifieds: job.files.map((file) => file.lastModifiedMs),
+        options: job.options,
         namingPattern: job.options.namingPattern,
         tool: job.tool,
         destinationPath: archivePath
@@ -193,6 +195,7 @@ export async function processJob(job: EnqueuedJob): Promise<void> {
       displayName: path.basename(outputPath),
       primaryOutputExt,
       canDirectDownload,
+      sourceFilesAvailable: false,
       completed: true,
       expiresAt: addTtl(LIMITS.outputTtlMs)
     });
@@ -211,6 +214,7 @@ export async function processJob(job: EnqueuedJob): Promise<void> {
       progress: 100,
       errorCode: appError.code,
       errorMessage: appError.message,
+      sourceFilesAvailable: false,
       completed: true,
       expiresAt: addTtl(LIMITS.failedCleanupTtlMs)
     });
