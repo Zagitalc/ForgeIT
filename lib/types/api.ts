@@ -62,11 +62,15 @@ export type JobRecord = {
   canDirectDownload?: boolean;
   options?: JobOptions;
   sourceFileNames?: string[];
+  sourceFileModifieds?: Record<string, number>;
+  sourceFilesAvailable?: boolean;
   expiresAt: string | null;
 };
 
 export type JobOptions = {
   namingPattern?: string;
+  outputSortBy?: "name" | "date";
+  outputSortDirection?: "asc" | "desc";
   splitPages?: string;
   rotateDegrees?: 90 | 180 | 270;
   imageFormat?: "jpeg" | "png" | "webp";

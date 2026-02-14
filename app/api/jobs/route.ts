@@ -83,7 +83,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       inputCount: persistedFiles.length,
       totalBytes,
       options: parsed.data.options ?? {},
-      sourceFileNames: persistedFiles.map((file) => file.originalName)
+      sourceFileNames: persistedFiles.map((file) => file.originalName),
+      sourceFileModifieds: Object.fromEntries(
+        persistedFiles.map((file) => [file.originalName, file.lastModifiedMs])
+      )
     });
 
     const queuedJob: EnqueuedJob = {

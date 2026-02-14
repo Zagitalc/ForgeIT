@@ -5,6 +5,7 @@ export type JobFile = {
   mimeType: string;
   storedPath: string;
   bytes: number;
+  lastModifiedMs: number;
 };
 
 export type EnqueuedJob = {

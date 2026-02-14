@@ -88,6 +88,8 @@ export function Dashboard() {
   const [imageFormat, setImageFormat] = useState<"jpeg" | "png" | "webp">("jpeg");
   const [imageQuality, setImageQuality] = useState(80);
   const [namingPattern, setNamingPattern] = useState("{original}-{tool}-{index}");
+  const [outputSortBy, setOutputSortBy] = useState<"name" | "date">("name");
+  const [outputSortDirection, setOutputSortDirection] = useState<"asc" | "desc">("asc");
   const [jobId, setJobId] = useState<string | null>(null);
   const [message, setMessage] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -96,6 +98,7 @@ export function Dashboard() {
   const [historySort, setHistorySort] = useState<"date" | "type">("date");
   const [dragOver, setDragOver] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [showQueuePolicy, setShowQueuePolicy] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
   const filteredTools = useMemo(() => TOOL_OPTIONS.filter((option) => option.tab === tab), [tab]);
@@ -184,6 +187,8 @@ export function Dashboard() {
   function buildOptions(): JobOptions {
     return {
       namingPattern,
+      outputSortBy,
+      outputSortDirection,
       splitPages,
       rotateDegrees,
       imageFormat,
@@ -276,18 +281,32 @@ export function Dashboard() {
       return;
     }
 
+    pushToast("success", payload.data?.message ?? "Rerun accepted.");
+    await fetchJobs();
+  }
+
+  async function reuseSettings(job: JobRecord): Promise<void> {
+    const response = await fetch(`/api/jobs/${job.id}/prefill`, { method: "POST" });
+    const payload = await response.json();
+    if (!payload.ok) {
+      pushToast("error", payload.error?.message ?? "Unable to load previous settings");
+      return;
+    }
+
     const nextTool = payload.data.tool as ToolType;
     const options = (payload.data.options ?? {}) as JobOptions;
 
     setTab(getTabForTool(nextTool));
     setTool(nextTool);
     setNamingPattern(options.namingPattern ?? "{original}-{tool}-{index}");
+    setOutputSortBy(options.outputSortBy ?? "name");
+    setOutputSortDirection(options.outputSortDirection ?? "asc");
     setSplitPages(options.splitPages ?? "1-2");
     setRotateDegrees(options.rotateDegrees ?? 90);
     setImageFormat(options.imageFormat ?? "jpeg");
     setImageQuality(options.imageQuality ?? 80);
     setMessage(payload.data.message);
-    pushToast("info", "Form prefilled. Attach files to rerun.");
+    pushToast("info", "Settings loaded. Attach files and start a new job.");
   }
 
   async function removeHistory(job: JobRecord): Promise<void> {
@@ -527,6 +546,34 @@ export function Dashboard() {
                 onChange={(event) => setNamingPattern(event.target.value)}
                 placeholder="{original}-{tool}-{index}"
               />
+              <div className="mt-3 grid gap-2 md:grid-cols-2">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                    Sort outputs by
+                  </label>
+                  <select
+                    className="input"
+                    value={outputSortBy}
+                    onChange={(event) => setOutputSortBy(event.target.value as "name" | "date")}
+                  >
+                    <option value="name">Name</option>
+                    <option value="date">Date</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                    Direction
+                  </label>
+                  <select
+                    className="input"
+                    value={outputSortDirection}
+                    onChange={(event) => setOutputSortDirection(event.target.value as "asc" | "desc")}
+                  >
+                    <option value="asc">Ascending</option>
+                    <option value="desc">Descending</option>
+                  </select>
+                </div>
+              </div>
               <div className="mt-2 flex flex-wrap gap-2">
                 {TOKENS.map((token) => (
                   <button key={token} type="button" className="token-chip" onClick={() => insertToken(token)}>
@@ -536,6 +583,9 @@ export function Dashboard() {
               </div>
               <p className="mt-2 text-xs text-[var(--muted)]">
                 Preview: <code className="rounded bg-forge-100 px-1 py-0.5 dark:bg-forge-800">{previewName}</code>
+              </p>
+              <p className="mt-1 text-xs text-[var(--muted)]">
+                Sort order controls output package file order and index token numbering.
               </p>
             </div>
 
@@ -551,7 +601,17 @@ export function Dashboard() {
         </div>
 
         <aside className="panel space-y-3">
-          <h2 className="font-display text-lg font-semibold">Queue</h2>
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-lg font-semibold">Queue</h2>
+            <button
+              type="button"
+              aria-label="Queue limits and policy"
+              className="btn-ghost h-8 w-8 rounded-full p-0"
+              onClick={() => setShowQueuePolicy((prev) => !prev)}
+            >
+              i
+            </button>
+          </div>
           <p className="text-sm text-[var(--muted)]">
             Active: {health?.queue.active ?? 0} | Queued: {health?.queue.queued ?? 0}
           </p>
@@ -562,9 +622,11 @@ export function Dashboard() {
               <p>Progress: {activeJob.progress ?? (activeJob.status === "completed" ? 100 : 0)}%</p>
             </div>
           )}
-          <p className="text-xs text-[var(--muted)]">
-            Limits: 20 files/job, 50MB/file, 200MB total, 2 concurrent jobs. Word conversion runs single-file mutex.
-          </p>
+          {showQueuePolicy && (
+            <div className="rounded-xl border border-forge-300 bg-forge-50/70 p-3 text-xs text-[var(--muted)] dark:border-forge-600 dark:bg-forge-800/30">
+              Limits: 20 files/job, 50MB/file, 200MB total, 2 concurrent jobs. Word conversion runs single-file mutex.
+            </div>
+          )}
         </aside>
       </section>
 
@@ -620,8 +682,17 @@ export function Dashboard() {
                           Output expired
                         </span>
                       )}
-                      <button type="button" className="btn-ghost" onClick={() => void rerun(job)}>
+                      <button
+                        type="button"
+                        className="btn-ghost"
+                        onClick={() => void rerun(job)}
+                        disabled={!job.sourceFilesAvailable}
+                        title={job.sourceFilesAvailable ? "Re-run now" : "Source files expired"}
+                      >
                         Re-run
+                      </button>
+                      <button type="button" className="btn-ghost" onClick={() => void reuseSettings(job)}>
+                        Reuse Settings
                       </button>
                       <button type="button" className="btn-ghost" onClick={() => void removeHistory(job)}>
                         Delete
@@ -656,8 +727,17 @@ export function Dashboard() {
                     Output expired
                   </span>
                 )}
-                <button type="button" className="btn-ghost" onClick={() => void rerun(job)}>
+                <button
+                  type="button"
+                  className="btn-ghost"
+                  onClick={() => void rerun(job)}
+                  disabled={!job.sourceFilesAvailable}
+                  title={job.sourceFilesAvailable ? "Re-run now" : "Source files expired"}
+                >
                   Re-run
+                </button>
+                <button type="button" className="btn-ghost" onClick={() => void reuseSettings(job)}>
+                  Reuse Settings
                 </button>
                 <button type="button" className="btn-ghost" onClick={() => void removeHistory(job)}>
                   Delete

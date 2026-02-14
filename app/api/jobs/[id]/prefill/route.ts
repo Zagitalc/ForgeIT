@@ -18,24 +18,16 @@ export async function POST(
       throw new AppError("JOB_NOT_FOUND", `Job ${id} does not exist.`);
     }
 
-    if (!job.sourceFilesAvailable) {
-      throw new AppError(
-        "PROCESSING_FAILED",
-        "Source files expired. Use Reuse Settings and attach files again."
-      );
-    }
-
     return NextResponse.json({
       ok: true,
       data: {
-        status: "accepted",
-        message: "Source files are still cached. Run a new job now."
+        tool: job.tool,
+        options: job.options ?? {},
+        sourceFileNames: job.sourceFileNames ?? [],
+        message: "Settings loaded. Attach files and start a new job."
       }
     });
   } catch (error) {
-    if (error instanceof AppError && error.code === "PROCESSING_FAILED") {
-      return fail(error, 409);
-    }
     return fail(error, 404);
   }
 }

@@ -23,7 +23,8 @@ export async function persistUploadFile(dir: string, file: File): Promise<JobFil
     originalName: file.name,
     mimeType: file.type || "application/octet-stream",
     storedPath: destination,
-    bytes: data.byteLength
+    bytes: data.byteLength,
+    lastModifiedMs: Number.isFinite(file.lastModified) ? file.lastModified : 0
   };
 }
 

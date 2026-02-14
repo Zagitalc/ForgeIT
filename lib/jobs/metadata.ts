@@ -37,8 +37,14 @@ function normalizeJob(job: JobRecord): JobRecord {
           : 0,
     primaryOutputExt: job.primaryOutputExt ?? outputExt ?? undefined,
     canDirectDownload: Boolean(job.canDirectDownload || inferredDirect),
-    options: job.options ?? {},
-    sourceFileNames: job.sourceFileNames ?? []
+    options: {
+      outputSortBy: "name",
+      outputSortDirection: "asc",
+      ...(job.options ?? {})
+    },
+    sourceFileNames: job.sourceFileNames ?? [],
+    sourceFileModifieds: job.sourceFileModifieds ?? {},
+    sourceFilesAvailable: Boolean(job.sourceFilesAvailable)
   };
 }
 
@@ -67,6 +73,7 @@ export function createJobMetadata(params: {
   totalBytes: number;
   options: JobOptions;
   sourceFileNames: string[];
+  sourceFileModifieds: Record<string, number>;
 }): void {
   const store = readStore();
   const record: JobRecord = {
@@ -85,8 +92,14 @@ export function createJobMetadata(params: {
     outputPath: null,
     primaryOutputExt: undefined,
     canDirectDownload: false,
-    options: params.options,
+    options: {
+      outputSortBy: "name",
+      outputSortDirection: "asc",
+      ...params.options
+    },
     sourceFileNames: params.sourceFileNames,
+    sourceFileModifieds: params.sourceFileModifieds,
+    sourceFilesAvailable: true,
     expiresAt: null
   };
 
@@ -103,6 +116,7 @@ export function updateJobStatus(params: {
   displayName?: string;
   primaryOutputExt?: string;
   canDirectDownload?: boolean;
+  sourceFilesAvailable?: boolean;
   errorCode?: ErrorCode | null;
   errorMessage?: string | null;
   completed?: boolean;
@@ -124,6 +138,7 @@ export function updateJobStatus(params: {
     displayName: params.displayName ?? existing.displayName,
     primaryOutputExt: params.primaryOutputExt ?? existing.primaryOutputExt,
     canDirectDownload: params.canDirectDownload ?? existing.canDirectDownload,
+    sourceFilesAvailable: params.sourceFilesAvailable ?? existing.sourceFilesAvailable,
     errorCode: params.errorCode ?? null,
     errorMessage: params.errorMessage ?? null,
     completedAt: params.completed ? new Date().toISOString() : existing.completedAt,
@@ -175,7 +190,9 @@ export function listJobsForCleanup(nowIso: string): JobRecord[] {
 export function markJobCleaned(id: string): void {
   const store = readStore();
   store.jobs = store.jobs.map((job) =>
-    job.id === id ? { ...job, outputPath: null, expiresAt: null, canDirectDownload: false } : job
+    job.id === id
+      ? { ...job, outputPath: null, expiresAt: null, canDirectDownload: false, sourceFilesAvailable: false }
+      : job
   );
   writeStore(store);
 }
