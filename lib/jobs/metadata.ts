@@ -40,11 +40,17 @@ function normalizeJob(job: JobRecord): JobRecord {
     options: {
       outputSortBy: "name",
       outputSortDirection: "asc",
+      filenameDateMode: "smart",
+      filenameDateDateFormat: "DDMMYY",
+      filenameDateTimeFormat: "HHMMSS",
+      filenameDateIgnoreCase: false,
       ...(job.options ?? {})
     },
     sourceFileNames: job.sourceFileNames ?? [],
     sourceFileModifieds: job.sourceFileModifieds ?? {},
-    sourceFilesAvailable: Boolean(job.sourceFilesAvailable)
+    sourceFilesAvailable: Boolean(job.sourceFilesAvailable),
+    sortParseMatched: typeof job.sortParseMatched === "number" ? job.sortParseMatched : undefined,
+    sortParseTotal: typeof job.sortParseTotal === "number" ? job.sortParseTotal : undefined
   };
 }
 
@@ -95,6 +101,10 @@ export function createJobMetadata(params: {
     options: {
       outputSortBy: "name",
       outputSortDirection: "asc",
+      filenameDateMode: "smart",
+      filenameDateDateFormat: "DDMMYY",
+      filenameDateTimeFormat: "HHMMSS",
+      filenameDateIgnoreCase: false,
       ...params.options
     },
     sourceFileNames: params.sourceFileNames,
@@ -117,6 +127,8 @@ export function updateJobStatus(params: {
   primaryOutputExt?: string;
   canDirectDownload?: boolean;
   sourceFilesAvailable?: boolean;
+  sortParseMatched?: number;
+  sortParseTotal?: number;
   errorCode?: ErrorCode | null;
   errorMessage?: string | null;
   completed?: boolean;
@@ -139,6 +151,8 @@ export function updateJobStatus(params: {
     primaryOutputExt: params.primaryOutputExt ?? existing.primaryOutputExt,
     canDirectDownload: params.canDirectDownload ?? existing.canDirectDownload,
     sourceFilesAvailable: params.sourceFilesAvailable ?? existing.sourceFilesAvailable,
+    sortParseMatched: params.sortParseMatched ?? existing.sortParseMatched,
+    sortParseTotal: params.sortParseTotal ?? existing.sortParseTotal,
     errorCode: params.errorCode ?? null,
     errorMessage: params.errorMessage ?? null,
     completedAt: params.completed ? new Date().toISOString() : existing.completedAt,

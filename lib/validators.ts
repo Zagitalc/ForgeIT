@@ -9,8 +9,15 @@ export const createJobSchema = z.object({
   options: z
     .object({
       namingPattern: z.string().max(120).optional(),
-      outputSortBy: z.union([z.literal("name"), z.literal("date")]).optional(),
+      outputSortBy: z.union([z.literal("name"), z.literal("date"), z.literal("filename_date")]).optional(),
       outputSortDirection: z.union([z.literal("asc"), z.literal("desc")]).optional(),
+      filenameDateMode: z.union([z.literal("smart"), z.literal("custom")]).optional(),
+      filenameDateRegex: z.string().max(250).optional(),
+      filenameDateDateFormat: z
+        .union([z.literal("DDMMYY"), z.literal("YYYYMMDD"), z.literal("YYYY-MM-DD")])
+        .optional(),
+      filenameDateTimeFormat: z.union([z.literal("HHMMSS"), z.literal("HH:mm:ss")]).optional(),
+      filenameDateIgnoreCase: z.boolean().optional(),
       splitPages: z.string().max(120).optional(),
       rotateDegrees: z.union([z.literal(90), z.literal(180), z.literal(270)]).optional(),
       imageFormat: z.union([z.literal("jpeg"), z.literal("png"), z.literal("webp")]).optional(),
@@ -18,6 +25,42 @@ export const createJobSchema = z.object({
       imageWidth: z.number().min(1).max(10_000).optional(),
       imageHeight: z.number().min(1).max(10_000).optional(),
       pageNumberStart: z.number().min(1).max(5000).optional()
+    })
+    .superRefine((value, ctx) => {
+      if (value.outputSortBy !== "filename_date") {
+        return;
+      }
+
+      if ((value.filenameDateMode ?? "smart") !== "custom") {
+        return;
+      }
+
+      const source = value.filenameDateRegex?.trim();
+      if (!source) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "filenameDateRegex is required in custom filename date mode."
+        });
+        return;
+      }
+
+      if (!source.includes("(?<date>")) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "filenameDateRegex must include a named capture group `date`."
+        });
+      }
+
+      try {
+        // Validate regex syntax early to provide actionable errors.
+        // eslint-disable-next-line no-new
+        new RegExp(source, value.filenameDateIgnoreCase ? "i" : undefined);
+      } catch {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "filenameDateRegex is not a valid regular expression."
+        });
+      }
     })
     .optional()
 });

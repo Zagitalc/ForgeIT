@@ -67,6 +67,21 @@ describe("sortZipEntriesForTest", () => {
 
     expect(sorted).toEqual(["/tmp/a.pdf", "/tmp/b.pdf", "/tmp/c.pdf"]);
   });
+
+  it("sorts by filename date with parsed entries first and unknown entries last", () => {
+    const sorted = sortZipEntriesForTest({
+      outputPaths: ["/tmp/one.pdf", "/tmp/two.pdf", "/tmp/three.pdf"],
+      inputNames: [
+        "dec_H80707-020725-094930-0000657546-1.pdf",
+        "plain-file.pdf",
+        "dec_H80707-311224-235959-0000000001-1.pdf"
+      ],
+      tool: "pdf.merge",
+      options: { outputSortBy: "filename_date", outputSortDirection: "asc", filenameDateMode: "smart" }
+    });
+
+    expect(sorted).toEqual(["/tmp/three.pdf", "/tmp/one.pdf", "/tmp/two.pdf"]);
+  });
 });
 
 describe("createOutputZip", () => {
@@ -104,5 +119,33 @@ describe("createOutputZip", () => {
     expect(fileNames.length).toBe(2);
     expect(fileNames[0].endsWith("/alpha-1.pdf")).toBe(true);
     expect(fileNames[1].endsWith("/beta-2.pdf")).toBe(true);
+  });
+
+  it("renders {filedate:*} token from extracted filename date", async () => {
+    const outputA = path.join(tmpDir, "a.pdf");
+    const outputB = path.join(tmpDir, "b.pdf");
+    await fs.writeFile(outputA, "A");
+    await fs.writeFile(outputB, "B");
+
+    const zipPath = path.join(tmpDir, "result-filedate.zip");
+    await createOutputZip({
+      outputPaths: [outputA, outputB],
+      inputNames: [
+        "dec_H80707-020725-094930-0000657546-1.pdf",
+        "dec_H80707-311224-235959-0000000001-1.pdf"
+      ],
+      sourceModifieds: [0, 0],
+      tool: "pdf.merge",
+      options: { outputSortBy: "filename_date", outputSortDirection: "asc", filenameDateMode: "smart" },
+      namingPattern: "{filedate:YYYY-MM-DD}-{index}",
+      destinationPath: zipPath
+    });
+
+    const buffer = await fs.readFile(zipPath);
+    const archive = await JSZip.loadAsync(buffer);
+    const fileNames = Object.keys(archive.files).filter((name) => !archive.files[name].dir).sort();
+
+    expect(fileNames[0]).toContain("2024-12-31-1.pdf");
+    expect(fileNames[1]).toContain("2025-07-02-2.pdf");
   });
 });

@@ -1,5 +1,5 @@
 export const LIMITS = {
-  maxFilesPerJob: 20,
+  maxFilesPerJob: 30,
   maxFileBytes: 50 * 1024 * 1024,
   maxTotalBytes: 200 * 1024 * 1024,
   maxConcurrentJobs: 2,

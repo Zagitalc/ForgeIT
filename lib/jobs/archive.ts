@@ -4,6 +4,7 @@ import path from "node:path";
 import JSZip from "jszip";
 
 import { buildOutputFileName } from "@/lib/jobs/naming";
+import { parseFilenameDate } from "@/lib/sort/filenameDate";
 import type { JobOptions, ToolType } from "@/lib/types/api";
 
 type ZipEntry = {
@@ -11,18 +12,33 @@ type ZipEntry = {
   outputExt: string;
   originalName: string;
   sourceModifiedMs: number;
+  parsedFileDateMs: number | null;
+  parsedFileDateMatched: boolean;
   sortName: string;
 };
 
 function compareEntries(
   left: ZipEntry,
   right: ZipEntry,
-  sortBy: "name" | "date",
+  sortBy: "name" | "date" | "filename_date",
   direction: "asc" | "desc"
 ): number {
   const order = direction === "asc" ? 1 : -1;
 
-  if (sortBy === "date") {
+  if (sortBy === "filename_date") {
+    const leftMatched = left.parsedFileDateMatched;
+    const rightMatched = right.parsedFileDateMatched;
+    if (leftMatched !== rightMatched) {
+      return leftMatched ? -1 : 1;
+    }
+
+    if (leftMatched && rightMatched) {
+      const diff = ((left.parsedFileDateMs ?? 0) - (right.parsedFileDateMs ?? 0)) * order;
+      if (diff !== 0) {
+        return diff;
+      }
+    }
+  } else if (sortBy === "date") {
     const diff = (left.sourceModifiedMs - right.sourceModifiedMs) * order;
     if (diff !== 0) {
       return diff;
@@ -34,7 +50,7 @@ function compareEntries(
     return nameDiff;
   }
 
-  return left.outputPath.localeCompare(right.outputPath) * order;
+  return left.outputPath.localeCompare(right.outputPath);
 }
 
 function buildEntries(params: {
@@ -42,19 +58,23 @@ function buildEntries(params: {
   outputPaths: string[];
   sourceModifieds?: number[];
   namingPattern?: string;
+  options?: JobOptions;
   tool: ToolType;
 }): ZipEntry[] {
   return params.outputPaths.map((outputPath, index) => {
     const outputExt = path.extname(outputPath).replace(".", "") || "bin";
     const originalName = params.inputNames[index] ?? params.inputNames[0] ?? path.basename(outputPath);
     const sourceModifiedMs = params.sourceModifieds?.[index] ?? params.sourceModifieds?.[0] ?? 0;
+    const parsed = parseFilenameDate(originalName, params.options);
     const sortName = buildOutputFileName({
       pattern: params.namingPattern,
       originalName,
       // placeholder index; real index is assigned after sorting
       index: 0,
       tool: params.tool,
-      outputExt
+      outputExt,
+      fileDateMs: parsed.dateMs ?? undefined,
+      sourceModifiedMs
     });
 
     return {
@@ -62,6 +82,8 @@ function buildEntries(params: {
       outputExt,
       originalName,
       sourceModifiedMs,
+      parsedFileDateMs: parsed.dateMs,
+      parsedFileDateMatched: parsed.matched,
       sortName
     };
   });
@@ -75,6 +97,7 @@ export async function createOutputZip(params: {
   namingPattern?: string;
   tool: ToolType;
   destinationPath: string;
+  onParseStats?: (stats: { matched: number; total: number }) => void;
 }): Promise<string> {
   const zip = new JSZip();
   const dateFolder = new Date().toISOString().slice(0, 10);
@@ -86,8 +109,13 @@ export async function createOutputZip(params: {
     outputPaths: params.outputPaths,
     sourceModifieds: params.sourceModifieds,
     namingPattern: params.namingPattern,
+    options: params.options,
     tool: params.tool
   }).sort((left, right) => compareEntries(left, right, sortBy, sortDirection));
+  params.onParseStats?.({
+    matched: entries.filter((entry) => entry.parsedFileDateMatched).length,
+    total: entries.length
+  });
 
   for (let index = 0; index < entries.length; index += 1) {
     const entry = entries[index];
@@ -97,7 +125,9 @@ export async function createOutputZip(params: {
       originalName: entry.originalName,
       index,
       tool: params.tool,
-      outputExt: entry.outputExt
+      outputExt: entry.outputExt,
+      fileDateMs: entry.parsedFileDateMs ?? undefined,
+      sourceModifiedMs: entry.sourceModifiedMs
     });
 
     const typeFolder = entry.outputExt;

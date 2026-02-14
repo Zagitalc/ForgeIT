@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { assertExtension, enforceFileLimits } from "@/lib/validators";
+import { LIMITS } from "@/lib/config/limits";
+import { assertExtension, createJobSchema, enforceFileLimits } from "@/lib/validators";
 
 describe("enforceFileLimits", () => {
   it("accepts valid file counts and sizes", () => {
@@ -30,6 +31,20 @@ describe("enforceFileLimits", () => {
     ];
     expect(() => enforceFileLimits(files)).toThrow(/Total upload size exceeds/);
   });
+
+  it("accepts up to max file count", () => {
+    const files = Array.from({ length: LIMITS.maxFilesPerJob }, (_, index) => {
+      return new File(["x"], `file-${index + 1}.txt`, { type: "text/plain" });
+    });
+    expect(() => enforceFileLimits(files)).not.toThrow();
+  });
+
+  it("rejects file count above max", () => {
+    const files = Array.from({ length: LIMITS.maxFilesPerJob + 1 }, (_, index) => {
+      return new File(["x"], `file-${index + 1}.txt`, { type: "text/plain" });
+    });
+    expect(() => enforceFileLimits(files)).toThrow(/Too many files/);
+  });
 });
 
 describe("assertExtension", () => {
@@ -39,5 +54,33 @@ describe("assertExtension", () => {
 
   it("rejects unsupported extensions", () => {
     expect(() => assertExtension("photo.gif", ["png", "jpg"])).toThrow(/Unsupported file type/);
+  });
+});
+
+describe("createJobSchema filename_date options", () => {
+  it("accepts smart filename-date sort config", () => {
+    const parsed = createJobSchema.safeParse({
+      tool: "pdf.merge",
+      options: {
+        outputSortBy: "filename_date",
+        outputSortDirection: "asc",
+        filenameDateMode: "smart"
+      }
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("rejects custom mode without date named group", () => {
+    const parsed = createJobSchema.safeParse({
+      tool: "pdf.merge",
+      options: {
+        outputSortBy: "filename_date",
+        filenameDateMode: "custom",
+        filenameDateRegex: "^prefix-(\\d{6})-(\\d{6})$",
+        filenameDateDateFormat: "DDMMYY",
+        filenameDateTimeFormat: "HHMMSS"
+      }
+    });
+    expect(parsed.success).toBe(false);
   });
 });

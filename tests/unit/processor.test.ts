@@ -141,4 +141,62 @@ describe("processJob", () => {
       expect.objectContaining({ id: "job-fail", status: "failed", sourceFilesAvailable: false })
     );
   });
+
+  it("applies filename-date sorting before PDF merge", async () => {
+    const updateJobStatus = vi.fn();
+    const mergePdfs = vi.fn(async (_inputPaths: string[], outputPath: string) => {
+      await fs.mkdir(path.dirname(outputPath), { recursive: true });
+      await fs.writeFile(outputPath, "merged");
+    });
+
+    vi.doMock("@/lib/jobs/metadata", () => ({ updateJobStatus }));
+    vi.doMock("@/lib/storage/files", () => ({ removePath: vi.fn(async () => undefined) }));
+    vi.doMock("@/lib/pdf/operations", async () => {
+      const actual = await vi.importActual<typeof import("@/lib/pdf/operations")>("@/lib/pdf/operations");
+      return {
+        ...actual,
+        mergePdfs
+      };
+    });
+
+    const { processJob } = await import("@/lib/jobs/processor");
+    await processJob({
+      id: "job-merge-order",
+      tool: "pdf.merge",
+      files: [
+        {
+          originalName: "dec_H80707-040226-102953-0000670901-1.pdf",
+          mimeType: "application/pdf",
+          storedPath: "/tmp/4-feb-2026.pdf",
+          bytes: 100,
+          lastModifiedMs: 1
+        },
+        {
+          originalName: "dec_H80707-040625-103912-0000655956-1.pdf",
+          mimeType: "application/pdf",
+          storedPath: "/tmp/4-jun-2025.pdf",
+          bytes: 100,
+          lastModifiedMs: 2
+        }
+      ],
+      options: {
+        outputSortBy: "filename_date",
+        outputSortDirection: "asc",
+        filenameDateMode: "smart"
+      }
+    });
+
+    expect(mergePdfs).toHaveBeenCalledWith(
+      ["/tmp/4-jun-2025.pdf", "/tmp/4-feb-2026.pdf"],
+      expect.any(String)
+    );
+    expect(updateJobStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "job-merge-order",
+        status: "completed",
+        sortParseMatched: 2,
+        sortParseTotal: 2
+      })
+    );
+  });
 });
