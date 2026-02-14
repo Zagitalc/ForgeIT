@@ -81,7 +81,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       id,
       tool,
       inputCount: persistedFiles.length,
-      totalBytes
+      totalBytes,
+      options: parsed.data.options ?? {},
+      sourceFileNames: persistedFiles.map((file) => file.originalName)
     });
 
     const queuedJob: EnqueuedJob = {

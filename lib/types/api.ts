@@ -46,7 +46,10 @@ export type JobStatus = "queued" | "processing" | "completed" | "failed";
 export type JobRecord = {
   id: string;
   tool: ToolType;
+  displayTool?: string;
+  displayName?: string;
   status: JobStatus;
+  progress?: number;
   inputCount: number;
   outputCount: number;
   totalBytes: number;
@@ -55,6 +58,10 @@ export type JobRecord = {
   errorCode: ErrorCode | null;
   errorMessage: string | null;
   outputPath: string | null;
+  primaryOutputExt?: string;
+  canDirectDownload?: boolean;
+  options?: JobOptions;
+  sourceFileNames?: string[];
   expiresAt: string | null;
 };
 

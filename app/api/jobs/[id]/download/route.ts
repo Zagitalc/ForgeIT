@@ -2,11 +2,12 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 import { NextRequest, NextResponse } from "next/server";
+import JSZip from "jszip";
 
 import { AppError } from "@/lib/errors";
 import { fail } from "@/lib/http";
-import { clearOutputPath, getJobMetadata } from "@/lib/jobs/metadata";
-import { removePath } from "@/lib/storage/files";
+import { getDownloadMeta } from "@/lib/jobs/download";
+import { getJobMetadata } from "@/lib/jobs/metadata";
 
 export const runtime = "nodejs";
 
@@ -27,15 +28,41 @@ export async function GET(
     }
 
     const bytes = await fs.readFile(job.outputPath);
-    const fileName = `${path.basename(job.outputPath)}`;
+    const download = getDownloadMeta(job);
 
-    await removePath(job.outputPath);
-    clearOutputPath(job.id);
+    if (!download.canDirectDownload && job.outputCount === 1 && job.outputPath.endsWith(".zip")) {
+      const archive = await JSZip.loadAsync(bytes);
+      const firstFile = Object.values(archive.files).find((entry) => !entry.dir);
+      if (firstFile) {
+        const innerBytes = await firstFile.async("nodebuffer");
+        const innerName = path.basename(firstFile.name);
+        const innerExt = path.extname(innerName).toLowerCase();
+        const innerContentType =
+          innerExt === ".pdf"
+            ? "application/pdf"
+            : innerExt === ".docx"
+              ? "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              : innerExt === ".png"
+                ? "image/png"
+                : innerExt === ".jpg" || innerExt === ".jpeg"
+                  ? "image/jpeg"
+                  : innerExt === ".webp"
+                    ? "image/webp"
+                    : "application/octet-stream";
 
-    return new NextResponse(bytes, {
+        return new NextResponse(new Uint8Array(innerBytes), {
+          headers: {
+            "Content-Type": innerContentType,
+            "Content-Disposition": `attachment; filename=\"${innerName}\"`
+          }
+        });
+      }
+    }
+
+    return new NextResponse(new Uint8Array(bytes), {
       headers: {
-        "Content-Type": "application/zip",
-        "Content-Disposition": `attachment; filename=\"${fileName}\"`
+        "Content-Type": download.contentType,
+        "Content-Disposition": `attachment; filename=\"${download.fileName}\"`
       }
     });
   } catch (error) {

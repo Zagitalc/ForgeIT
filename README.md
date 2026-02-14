@@ -33,7 +33,9 @@ ForgeIT is a local-first file converter and PDF toolkit built with Next.js, Tail
 - `POST /api/jobs` enqueue job
 - `GET /api/jobs` list jobs + queue stats
 - `GET /api/jobs/:id` get job status
-- `GET /api/jobs/:id/download` download ZIP output
+- `GET /api/jobs/:id/download` download direct output (single file) or ZIP (batch)
+- `POST /api/jobs/:id/rerun` prefill a rerun workflow
+- `DELETE /api/jobs/:id` delete job history and artifacts
 - `GET /api/health` dependency + queue health
 
 ## Tool Values

@@ -21,7 +21,7 @@ function addTtl(ms: number): string {
 }
 
 export async function processJob(job: EnqueuedJob): Promise<void> {
-  updateJobStatus({ id: job.id, status: "processing" });
+  updateJobStatus({ id: job.id, status: "processing", progress: 15 });
 
   const outputDirectory = outputsDir(job.id);
   const workDirectory = processingDir(job.id);
@@ -153,14 +153,32 @@ export async function processJob(job: EnqueuedJob): Promise<void> {
       throw new AppError("PROCESSING_FAILED", "No outputs were generated.");
     }
 
-    const archivePath = path.join(outputDirectory, "result.zip");
-    await createOutputZip({
-      inputNames: job.files.map((file) => file.originalName),
-      outputPaths: outputFiles,
-      namingPattern: job.options.namingPattern,
-      tool: job.tool,
-      destinationPath: archivePath
-    });
+    let outputPath: string;
+    let canDirectDownload = false;
+    let primaryOutputExt = "zip";
+
+    if (outputFiles.length === 1) {
+      const singleOutput = outputFiles[0];
+      const target = path.join(outputDirectory, path.basename(singleOutput));
+      if (singleOutput !== target) {
+        await fs.copyFile(singleOutput, target);
+      }
+      outputPath = target;
+      primaryOutputExt = path.extname(target).replace(".", "").toLowerCase() || "bin";
+      canDirectDownload = true;
+    } else {
+      const archivePath = path.join(outputDirectory, "result.zip");
+      await createOutputZip({
+        inputNames: job.files.map((file) => file.originalName),
+        outputPaths: outputFiles,
+        namingPattern: job.options.namingPattern,
+        tool: job.tool,
+        destinationPath: archivePath
+      });
+      outputPath = archivePath;
+      canDirectDownload = false;
+      primaryOutputExt = "zip";
+    }
 
     await removePath(uploadsDir(job.id));
     await removePath(workDirectory);
@@ -169,8 +187,12 @@ export async function processJob(job: EnqueuedJob): Promise<void> {
     updateJobStatus({
       id: job.id,
       status: "completed",
+      progress: 100,
       outputCount: outputFiles.length,
-      outputPath: archivePath,
+      outputPath,
+      displayName: path.basename(outputPath),
+      primaryOutputExt,
+      canDirectDownload,
       completed: true,
       expiresAt: addTtl(LIMITS.outputTtlMs)
     });
@@ -186,6 +208,7 @@ export async function processJob(job: EnqueuedJob): Promise<void> {
     updateJobStatus({
       id: job.id,
       status: "failed",
+      progress: 100,
       errorCode: appError.code,
       errorMessage: appError.message,
       completed: true,

@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
-import type { ErrorCode, JobRecord, JobStatus, ToolType } from "@/lib/types/api";
+import { getToolLabel } from "@/lib/jobs/display";
+import type { ErrorCode, JobOptions, JobRecord, JobStatus, ToolType } from "@/lib/types/api";
 
 const DB_DIR = path.join(process.cwd(), ".forgeit");
 const DB_PATH = path.join(DB_DIR, "jobs.json");
@@ -18,6 +19,29 @@ function ensureStore(): void {
   }
 }
 
+function normalizeJob(job: JobRecord): JobRecord {
+  const outputExt = job.outputPath
+    ? path.extname(job.outputPath).replace(".", "").toLowerCase()
+    : job.primaryOutputExt;
+  const inferredDirect = Boolean(job.outputPath && path.extname(job.outputPath).toLowerCase() !== ".zip" && job.outputCount === 1);
+
+  return {
+    ...job,
+    displayTool: job.displayTool ?? getToolLabel(job.tool),
+    displayName: job.displayName ?? undefined,
+    progress:
+      typeof job.progress === "number"
+        ? job.progress
+        : job.status === "completed" || job.status === "failed"
+          ? 100
+          : 0,
+    primaryOutputExt: job.primaryOutputExt ?? outputExt ?? undefined,
+    canDirectDownload: Boolean(job.canDirectDownload || inferredDirect),
+    options: job.options ?? {},
+    sourceFileNames: job.sourceFileNames ?? []
+  };
+}
+
 function readStore(): JobStore {
   ensureStore();
   try {
@@ -26,7 +50,7 @@ function readStore(): JobStore {
     if (!Array.isArray(parsed.jobs)) {
       return { jobs: [] };
     }
-    return parsed;
+    return { jobs: parsed.jobs.map((job) => normalizeJob(job)) };
   } catch {
     return { jobs: [] };
   }
@@ -41,12 +65,16 @@ export function createJobMetadata(params: {
   tool: ToolType;
   inputCount: number;
   totalBytes: number;
+  options: JobOptions;
+  sourceFileNames: string[];
 }): void {
   const store = readStore();
   const record: JobRecord = {
     id: params.id,
     tool: params.tool,
+    displayTool: getToolLabel(params.tool),
     status: "queued",
+    progress: 0,
     inputCount: params.inputCount,
     outputCount: 0,
     totalBytes: params.totalBytes,
@@ -55,6 +83,10 @@ export function createJobMetadata(params: {
     errorCode: null,
     errorMessage: null,
     outputPath: null,
+    primaryOutputExt: undefined,
+    canDirectDownload: false,
+    options: params.options,
+    sourceFileNames: params.sourceFileNames,
     expiresAt: null
   };
 
@@ -65,8 +97,12 @@ export function createJobMetadata(params: {
 export function updateJobStatus(params: {
   id: string;
   status: JobStatus;
+  progress?: number;
   outputCount?: number;
   outputPath?: string | null;
+  displayName?: string;
+  primaryOutputExt?: string;
+  canDirectDownload?: boolean;
   errorCode?: ErrorCode | null;
   errorMessage?: string | null;
   completed?: boolean;
@@ -82,8 +118,12 @@ export function updateJobStatus(params: {
   const updated: JobRecord = {
     ...existing,
     status: params.status,
+    progress: typeof params.progress === "number" ? params.progress : existing.progress,
     outputCount: params.outputCount ?? existing.outputCount,
     outputPath: params.outputPath ?? existing.outputPath,
+    displayName: params.displayName ?? existing.displayName,
+    primaryOutputExt: params.primaryOutputExt ?? existing.primaryOutputExt,
+    canDirectDownload: params.canDirectDownload ?? existing.canDirectDownload,
     errorCode: params.errorCode ?? null,
     errorMessage: params.errorMessage ?? null,
     completedAt: params.completed ? new Date().toISOString() : existing.completedAt,
@@ -108,7 +148,9 @@ export function listJobMetadata(limit = 100): JobRecord[] {
 
 export function clearOutputPath(id: string): void {
   const store = readStore();
-  store.jobs = store.jobs.map((job) => (job.id === id ? { ...job, outputPath: null } : job));
+  store.jobs = store.jobs.map((job) =>
+    job.id === id ? { ...job, outputPath: null, canDirectDownload: false } : job
+  );
   writeStore(store);
 }
 
@@ -133,7 +175,7 @@ export function listJobsForCleanup(nowIso: string): JobRecord[] {
 export function markJobCleaned(id: string): void {
   const store = readStore();
   store.jobs = store.jobs.map((job) =>
-    job.id === id ? { ...job, outputPath: null, expiresAt: null } : job
+    job.id === id ? { ...job, outputPath: null, expiresAt: null, canDirectDownload: false } : job
   );
   writeStore(store);
 }
