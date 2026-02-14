@@ -64,13 +64,20 @@ export type JobRecord = {
   sourceFileNames?: string[];
   sourceFileModifieds?: Record<string, number>;
   sourceFilesAvailable?: boolean;
+  sortParseMatched?: number;
+  sortParseTotal?: number;
   expiresAt: string | null;
 };
 
 export type JobOptions = {
   namingPattern?: string;
-  outputSortBy?: "name" | "date";
+  outputSortBy?: "name" | "date" | "filename_date";
   outputSortDirection?: "asc" | "desc";
+  filenameDateMode?: "smart" | "custom";
+  filenameDateRegex?: string;
+  filenameDateDateFormat?: "DDMMYY" | "YYYYMMDD" | "YYYY-MM-DD";
+  filenameDateTimeFormat?: "HHMMSS" | "HH:mm:ss";
+  filenameDateIgnoreCase?: boolean;
   splitPages?: string;
   rotateDegrees?: 90 | 180 | 270;
   imageFormat?: "jpeg" | "png" | "webp";

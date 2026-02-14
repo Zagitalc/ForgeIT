@@ -6,6 +6,7 @@ import type { DragEvent, FormEvent } from "react";
 import { StatusBadge } from "@/components/StatusBadge";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { getTabForTool, getToolLabel } from "@/lib/jobs/display";
+import { countFilenameDateMatches, formatFileDate, parseFilenameDate } from "@/lib/sort/filenameDate";
 import type { JobOptions, JobRecord, ToolType } from "@/lib/types/api";
 
 const TABS = ["Convert", "PDF", "Images"] as const;
@@ -46,7 +47,7 @@ const TOOL_OPTIONS: Array<{ label: string; value: ToolType; tab: Tab; accepts: s
   { label: "Images -> PDF", value: "convert.images_pdf", tab: "Images", accepts: ".jpg,.jpeg,.png" }
 ];
 
-const TOKENS = ["{original}", "{tool}", "{index}", "{date:YYYY-MM-DD}"];
+const TOKENS = ["{original}", "{tool}", "{index}", "{date:YYYY-MM-DD}", "{filedate:YYYY-MM-DD}"];
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -65,17 +66,46 @@ function relativeTime(iso: string): string {
   return `${days}d ago`;
 }
 
+export function truncateMiddle(value: string, maxLength = 44): string {
+  if (value.length <= maxLength) return value;
+  const side = Math.floor((maxLength - 3) / 2);
+  return `${value.slice(0, side)}...${value.slice(value.length - side)}`;
+}
+
+export function renderPatternPreview(pattern: string, params: { original: string; tool: ToolType; fileDateMs?: number }): string {
+  const template = pattern.trim() || "{original}-{tool}-{index}";
+  const today = new Date();
+  const now = template.replace(/\{date:([^}]+)\}/g, (_full, fmt: string) => {
+    return fmt
+      .replace("YYYY", String(today.getFullYear()))
+      .replace("MM", String(today.getMonth() + 1).padStart(2, "0"))
+      .replace("DD", String(today.getDate()).padStart(2, "0"));
+  });
+  const withFileDate = now.replace(/\{filedate:([^}]+)\}/g, (_full, fmt: string) => {
+    return formatFileDate(params.fileDateMs ?? Date.now(), fmt);
+  });
+  return withFileDate
+    .replaceAll("{original}", params.original)
+    .replaceAll("{tool}", params.tool)
+    .replaceAll("{index}", "1")
+    .replace(/[^a-zA-Z0-9._-]/g, "_");
+}
+
 function joinUniqueFiles(existing: File[], incoming: File[]): File[] {
-  const seen = new Set(existing.map((file) => `${file.name}-${file.size}-${file.lastModified}`));
+  const seen = new Set(existing.map((file) => fileIdentity(file)));
   const next = [...existing];
   for (const file of incoming) {
-    const key = `${file.name}-${file.size}-${file.lastModified}`;
+    const key = fileIdentity(file);
     if (!seen.has(key)) {
       seen.add(key);
       next.push(file);
     }
   }
   return next;
+}
+
+function fileIdentity(file: File): string {
+  return `${file.name}-${file.size}-${file.lastModified}`;
 }
 
 export function Dashboard() {
@@ -88,8 +118,13 @@ export function Dashboard() {
   const [imageFormat, setImageFormat] = useState<"jpeg" | "png" | "webp">("jpeg");
   const [imageQuality, setImageQuality] = useState(80);
   const [namingPattern, setNamingPattern] = useState("{original}-{tool}-{index}");
-  const [outputSortBy, setOutputSortBy] = useState<"name" | "date">("name");
+  const [outputSortBy, setOutputSortBy] = useState<"name" | "date" | "filename_date">("name");
   const [outputSortDirection, setOutputSortDirection] = useState<"asc" | "desc">("asc");
+  const [filenameDateMode, setFilenameDateMode] = useState<"smart" | "custom">("smart");
+  const [filenameDateRegex, setFilenameDateRegex] = useState("^[^-]+-(?<date>\\d{6})-(?<time>\\d{6})-");
+  const [filenameDateDateFormat, setFilenameDateDateFormat] = useState<"DDMMYY" | "YYYYMMDD" | "YYYY-MM-DD">("DDMMYY");
+  const [filenameDateTimeFormat, setFilenameDateTimeFormat] = useState<"HHMMSS" | "HH:mm:ss">("HHMMSS");
+  const [filenameDateIgnoreCase, setFilenameDateIgnoreCase] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [message, setMessage] = useState<string>("");
   const [loading, setLoading] = useState(false);
@@ -115,9 +150,126 @@ export function Dashboard() {
     () => jobs.find((job) => job.status === "processing" || job.status === "queued"),
     [jobs]
   );
+  const filesForDisplay = useMemo(() => {
+    const sortDirection = outputSortDirection;
+    const parseOptions: JobOptions = {
+      outputSortBy: "filename_date",
+      filenameDateMode,
+      filenameDateRegex,
+      filenameDateDateFormat,
+      filenameDateTimeFormat,
+      filenameDateIgnoreCase
+    };
+
+    return files
+      .map((file) => ({
+        key: fileIdentity(file),
+        file,
+        parsed: parseFilenameDate(file.name, parseOptions)
+      }))
+      .sort((left, right) => {
+        if (outputSortBy === "filename_date") {
+          if (left.parsed.matched !== right.parsed.matched) {
+            return left.parsed.matched ? -1 : 1;
+          }
+          if (left.parsed.matched && right.parsed.matched) {
+            const order = sortDirection === "asc" ? 1 : -1;
+            const diff = ((left.parsed.dateMs ?? 0) - (right.parsed.dateMs ?? 0)) * order;
+            if (diff !== 0) {
+              return diff;
+            }
+          }
+        } else if (outputSortBy === "date") {
+          const order = sortDirection === "asc" ? 1 : -1;
+          const diff = (left.file.lastModified - right.file.lastModified) * order;
+          if (diff !== 0) {
+            return diff;
+          }
+        }
+
+        const order = sortDirection === "asc" ? 1 : -1;
+        const nameDiff =
+          left.file.name.localeCompare(right.file.name, undefined, { sensitivity: "base" }) * order;
+        if (nameDiff !== 0) {
+          return nameDiff;
+        }
+
+        return left.key.localeCompare(right.key);
+      });
+  }, [
+    files,
+    filenameDateDateFormat,
+    filenameDateIgnoreCase,
+    filenameDateMode,
+    filenameDateRegex,
+    filenameDateTimeFormat,
+    outputSortBy,
+    outputSortDirection
+  ]);
+  const filenameDateParsePreview = useMemo(() => {
+    if (outputSortBy !== "filename_date") {
+      return null;
+    }
+
+    const parseOptions: JobOptions = {
+      outputSortBy: "filename_date",
+      filenameDateMode,
+      filenameDateRegex,
+      filenameDateDateFormat,
+      filenameDateTimeFormat,
+      filenameDateIgnoreCase
+    };
+
+    const previews = files.map((file) => {
+      const parsed = parseFilenameDate(file.name, parseOptions);
+      return {
+        key: fileIdentity(file),
+        fileName: file.name,
+        matched: parsed.matched,
+        dateMs: parsed.dateMs
+      };
+    });
+    const counts = countFilenameDateMatches(
+      files.map((file) => file.name),
+      parseOptions
+    );
+
+    return { previews, ...counts };
+  }, [
+    files,
+    filenameDateDateFormat,
+    filenameDateIgnoreCase,
+    filenameDateMode,
+    filenameDateRegex,
+    filenameDateTimeFormat,
+    outputSortBy
+  ]);
+  const filenameDateValidationError = useMemo(() => {
+    if (outputSortBy !== "filename_date" || filenameDateMode !== "custom") {
+      return "";
+    }
+    const source = filenameDateRegex.trim();
+    if (!source) {
+      return "Custom mode requires a regex pattern.";
+    }
+    if (!source.includes("(?<date>")) {
+      return "Regex must include named group `date` (and optional `time`).";
+    }
+    try {
+      // eslint-disable-next-line no-new
+      new RegExp(source, filenameDateIgnoreCase ? "i" : undefined);
+    } catch {
+      return "Regex is invalid.";
+    }
+    return "";
+  }, [filenameDateIgnoreCase, filenameDateMode, filenameDateRegex, outputSortBy]);
 
   const selectedTool = TOOL_OPTIONS.find((option) => option.value === tool);
-  const canSubmit = files.length > 0 && !loading && !(tool === "word.docx_to_pdf" && !health?.libreOffice.available);
+  const canSubmit =
+    files.length > 0 &&
+    !loading &&
+    !(tool === "word.docx_to_pdf" && !health?.libreOffice.available) &&
+    !filenameDateValidationError;
 
   useEffect(() => {
     const firstTool = filteredTools[0];
@@ -185,7 +337,7 @@ export function Dashboard() {
   }
 
   function buildOptions(): JobOptions {
-    return {
+    const options: JobOptions = {
       namingPattern,
       outputSortBy,
       outputSortDirection,
@@ -194,6 +346,16 @@ export function Dashboard() {
       imageFormat,
       imageQuality
     };
+    if (outputSortBy === "filename_date") {
+      options.filenameDateMode = filenameDateMode;
+      if (filenameDateMode === "custom") {
+        options.filenameDateRegex = filenameDateRegex.trim();
+        options.filenameDateDateFormat = filenameDateDateFormat;
+        options.filenameDateTimeFormat = filenameDateTimeFormat;
+        options.filenameDateIgnoreCase = filenameDateIgnoreCase;
+      }
+    }
+    return options;
   }
 
   function appendFiles(incoming: File[]): void {
@@ -301,6 +463,11 @@ export function Dashboard() {
     setNamingPattern(options.namingPattern ?? "{original}-{tool}-{index}");
     setOutputSortBy(options.outputSortBy ?? "name");
     setOutputSortDirection(options.outputSortDirection ?? "asc");
+    setFilenameDateMode(options.filenameDateMode ?? "smart");
+    setFilenameDateRegex(options.filenameDateRegex ?? "^[^-]+-(?<date>\\d{6})-(?<time>\\d{6})-");
+    setFilenameDateDateFormat(options.filenameDateDateFormat ?? "DDMMYY");
+    setFilenameDateTimeFormat(options.filenameDateTimeFormat ?? "HHMMSS");
+    setFilenameDateIgnoreCase(Boolean(options.filenameDateIgnoreCase));
     setSplitPages(options.splitPages ?? "1-2");
     setRotateDegrees(options.rotateDegrees ?? 90);
     setImageFormat(options.imageFormat ?? "jpeg");
@@ -329,8 +496,8 @@ export function Dashboard() {
     setNamingPattern((prev) => (prev.includes(token) ? prev : `${prev}${prev ? "-" : ""}${token}`));
   }
 
-  function removeFile(index: number): void {
-    setFiles((prev) => prev.filter((_, i) => i !== index));
+  function removeFileByKey(key: string): void {
+    setFiles((prev) => prev.filter((file) => fileIdentity(file) !== key));
   }
 
   function outputLabel(job: JobRecord): string {
@@ -363,10 +530,13 @@ export function Dashboard() {
     return job.status === "completed" && Boolean(job.outputPath);
   }
 
-  const previewName =
-    files[0]?.name.replace(/\.[^.]+$/, "")
-      .replace(/[^a-zA-Z0-9_-]/g, "_")
-      .concat(`-${tool}-1`) ?? "sample-output";
+  const sampleBase = files[0]?.name.replace(/\.[^.]+$/, "").replace(/[^a-zA-Z0-9_-]/g, "_") ?? "sample-output";
+  const sampleParsedDate = filenameDateParsePreview?.previews.find((item) => item.matched)?.dateMs ?? undefined;
+  const previewName = renderPatternPreview(namingPattern, {
+    original: sampleBase,
+    tool,
+    fileDateMs: sampleParsedDate ?? Date.now()
+  });
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col gap-4 px-4 py-6 md:px-6">
@@ -447,7 +617,14 @@ export function Dashboard() {
               ))}
             </select>
 
-            <label className="block text-sm font-semibold">Files</label>
+            <div className="flex items-center justify-between gap-2">
+              <label className="block text-sm font-semibold">Files</label>
+              {files.length > 0 && (
+                <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={() => setFiles([])}>
+                  Clear All
+                </button>
+              )}
+            </div>
             <button
               type="button"
               className={`dropzone w-full ${dragOver ? "border-forge-500 bg-forge-100/70 dark:bg-forge-800/40" : ""}`}
@@ -469,18 +646,33 @@ export function Dashboard() {
                 onChange={(event) => appendFiles([...(event.target.files ?? [])])}
               />
               <p className="text-sm font-semibold">Drop files here or click to browse</p>
-              <p className="text-xs text-[var(--muted)]">{files.length} selected • max 20 files • max 50MB each</p>
+              <p className="text-xs text-[var(--muted)]">{files.length} selected • max 30 files • max 50MB each</p>
             </button>
 
             {files.length > 0 && (
               <ul className="space-y-2" aria-label="Selected files">
-                {files.map((file, index) => (
+                {filesForDisplay.map((entry) => (
                   <li
-                    key={`${file.name}-${file.lastModified}-${index}`}
+                    key={entry.key}
                     className="flex items-center justify-between rounded-xl border border-forge-200 bg-forge-50/70 px-3 py-2 text-sm dark:border-forge-600 dark:bg-forge-800/30"
                   >
-                    <span className="truncate">{file.name} ({formatBytes(file.size)})</span>
-                    <button type="button" className="btn-ghost px-2 py-1 text-xs" onClick={() => removeFile(index)}>
+                    <div className="min-w-0">
+                      <span className="block truncate" title={entry.file.name}>
+                        {truncateMiddle(entry.file.name)} ({formatBytes(entry.file.size)})
+                      </span>
+                      {outputSortBy === "filename_date" &&
+                        entry.parsed.matched &&
+                        entry.parsed.dateMs !== null && (
+                          <span className="mt-1 inline-block rounded-full border border-emerald-300 bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-800">
+                            {formatFileDate(entry.parsed.dateMs ?? 0, "YYYY-MM-DD")}
+                          </span>
+                        )}
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-ghost ml-2 shrink-0 px-2 py-1 text-xs"
+                      onClick={() => removeFileByKey(entry.key)}
+                    >
                       Remove
                     </button>
                   </li>
@@ -554,10 +746,11 @@ export function Dashboard() {
                   <select
                     className="input"
                     value={outputSortBy}
-                    onChange={(event) => setOutputSortBy(event.target.value as "name" | "date")}
+                    onChange={(event) => setOutputSortBy(event.target.value as "name" | "date" | "filename_date")}
                   >
                     <option value="name">Name</option>
                     <option value="date">Date</option>
+                    <option value="filename_date">Date in Filename (Smart)</option>
                   </select>
                 </div>
                 <div>
@@ -574,6 +767,90 @@ export function Dashboard() {
                   </select>
                 </div>
               </div>
+              {outputSortBy === "filename_date" && (
+                <div className="mt-3 space-y-2 rounded-xl border border-forge-200 bg-forge-50/70 p-3 dark:border-forge-700 dark:bg-forge-800/30">
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <div>
+                      <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                        Mode
+                      </label>
+                      <select
+                        className="input"
+                        value={filenameDateMode}
+                        onChange={(event) => setFilenameDateMode(event.target.value as "smart" | "custom")}
+                      >
+                        <option value="smart">Smart</option>
+                        <option value="custom">Custom</option>
+                      </select>
+                    </div>
+                    {filenameDateParsePreview && (
+                      <div className="self-end text-xs text-[var(--muted)]">
+                        Detected {filenameDateParsePreview.matched}/{filenameDateParsePreview.total} filename dates.
+                      </div>
+                    )}
+                  </div>
+
+                  {filenameDateMode === "custom" && (
+                    <div className="space-y-2">
+                      <div>
+                        <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                          Regex (named groups: date, optional time)
+                        </label>
+                        <input
+                          className="input"
+                          value={filenameDateRegex}
+                          onChange={(event) => setFilenameDateRegex(event.target.value)}
+                          placeholder="^(?<prefix>[^-]+)-(?<date>\\d{6})-(?<time>\\d{6})-"
+                        />
+                      </div>
+                      <div className="grid gap-2 md:grid-cols-2">
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                            Date Format
+                          </label>
+                          <select
+                            className="input"
+                            value={filenameDateDateFormat}
+                            onChange={(event) =>
+                              setFilenameDateDateFormat(event.target.value as "DDMMYY" | "YYYYMMDD" | "YYYY-MM-DD")
+                            }
+                          >
+                            <option value="DDMMYY">DDMMYY</option>
+                            <option value="YYYYMMDD">YYYYMMDD</option>
+                            <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--muted)]">
+                            Time Format
+                          </label>
+                          <select
+                            className="input"
+                            value={filenameDateTimeFormat}
+                            onChange={(event) =>
+                              setFilenameDateTimeFormat(event.target.value as "HHMMSS" | "HH:mm:ss")
+                            }
+                          >
+                            <option value="HHMMSS">HHMMSS</option>
+                            <option value="HH:mm:ss">HH:mm:ss</option>
+                          </select>
+                        </div>
+                      </div>
+                      <label className="flex items-center gap-2 text-xs text-[var(--muted)]">
+                        <input
+                          type="checkbox"
+                          checked={filenameDateIgnoreCase}
+                          onChange={(event) => setFilenameDateIgnoreCase(event.target.checked)}
+                        />
+                        Ignore case
+                      </label>
+                    </div>
+                  )}
+                  {filenameDateValidationError && (
+                    <p className="text-xs font-semibold text-rose-600">{filenameDateValidationError}</p>
+                  )}
+                </div>
+              )}
               <div className="mt-2 flex flex-wrap gap-2">
                 {TOKENS.map((token) => (
                   <button key={token} type="button" className="token-chip" onClick={() => insertToken(token)}>
@@ -624,7 +901,7 @@ export function Dashboard() {
           )}
           {showQueuePolicy && (
             <div className="rounded-xl border border-forge-300 bg-forge-50/70 p-3 text-xs text-[var(--muted)] dark:border-forge-600 dark:bg-forge-800/30">
-              Limits: 20 files/job, 50MB/file, 200MB total, 2 concurrent jobs. Word conversion runs single-file mutex.
+              Limits: 30 files/job, 50MB/file, 200MB total, 2 concurrent jobs. Word conversion runs single-file mutex.
             </div>
           )}
         </aside>
@@ -663,7 +940,14 @@ export function Dashboard() {
               {sortedJobs.map((job) => (
                 <tr key={job.id} className="border-b border-forge-100 align-middle dark:border-forge-800">
                   <td className="py-2 font-mono text-xs">{job.id}</td>
-                  <td className="py-2">{job.displayTool ?? getToolLabel(job.tool)}</td>
+                  <td className="py-2">
+                    <div>{job.displayTool ?? getToolLabel(job.tool)}</div>
+                    {typeof job.sortParseTotal === "number" && job.sortParseTotal > 0 && (
+                      <div className="text-xs text-[var(--muted)]">
+                        Filename date parsed: {job.sortParseMatched ?? 0}/{job.sortParseTotal}
+                      </div>
+                    )}
+                  </td>
                   <td className="py-2">
                     <StatusBadge status={job.status} />
                   </td>
@@ -710,6 +994,11 @@ export function Dashboard() {
             <article key={job.id} className="rounded-xl border border-forge-200 p-3 dark:border-forge-700">
               <p className="font-mono text-xs">{job.id}</p>
               <p className="mt-1 text-sm font-semibold">{job.displayTool ?? getToolLabel(job.tool)}</p>
+              {typeof job.sortParseTotal === "number" && job.sortParseTotal > 0 && (
+                <p className="text-xs text-[var(--muted)]">
+                  Filename date parsed: {job.sortParseMatched ?? 0}/{job.sortParseTotal}
+                </p>
+              )}
               <div className="mt-2 flex items-center justify-between">
                 <StatusBadge status={job.status} />
                 <span className="text-xs text-[var(--muted)]" title={new Date(job.startedAt).toLocaleString()}>

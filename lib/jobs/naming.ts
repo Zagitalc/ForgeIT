@@ -3,6 +3,7 @@ import path from "node:path";
 import type { ToolType } from "@/lib/types/api";
 
 const DATE_PATTERN = /\{date:([^}]+)\}/g;
+const FILE_DATE_PATTERN = /\{filedate:([^}]+)\}/g;
 
 function formatDate(template: string, date = new Date()): string {
   return template
@@ -17,14 +18,20 @@ export function buildOutputFileName(params: {
   index: number;
   tool: ToolType;
   outputExt: string;
+  fileDateMs?: number;
+  sourceModifiedMs?: number;
 }): string {
-  const { pattern, originalName, index, tool, outputExt } = params;
+  const { pattern, originalName, index, tool, outputExt, fileDateMs, sourceModifiedMs } = params;
   const base = path.parse(originalName).name;
 
   const template = pattern?.trim() || "{original}-{tool}-{index}";
   const withDate = template.replace(DATE_PATTERN, (_, datePattern: string) => formatDate(datePattern));
+  const dateValue = fileDateMs ?? sourceModifiedMs ?? Date.now();
+  const withFileDate = withDate.replace(FILE_DATE_PATTERN, (_, datePattern: string) =>
+    formatDate(datePattern, new Date(dateValue))
+  );
 
-  const rendered = withDate
+  const rendered = withFileDate
     .replaceAll("{original}", base)
     .replaceAll("{index}", String(index + 1))
     .replaceAll("{tool}", tool)
