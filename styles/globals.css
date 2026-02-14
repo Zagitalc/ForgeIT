@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --bg: #fff8f1;
+  --bg-elevated: #ffffff;
+  --text: #1f1b16;
+  --muted: #8a6a54;
+  --ring: #f97316;
+}
+
+.dark {
+  color-scheme: dark;
+  --bg: #18120d;
+  --bg-elevated: #261a11;
+  --text: #fdeedc;
+  --muted: #d3ae8f;
+  --ring: #fb923c;
+}
+
+body {
+  background:
+    radial-gradient(ellipse at top left, rgba(249, 115, 22, 0.15), transparent 45%),
+    radial-gradient(ellipse at bottom right, rgba(251, 146, 60, 0.2), transparent 45%),
+    var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+@layer components {
+  .panel {
+    @apply rounded-2xl border border-forge-200/60 bg-white/85 p-4 shadow-sm backdrop-blur dark:border-forge-700/40 dark:bg-forge-900/30;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-forge-300/70 bg-white px-3 py-2 text-sm text-forge-900 outline-none ring-0 transition focus:border-forge-500 focus:ring-2 focus:ring-forge-400/50 dark:border-forge-700 dark:bg-forge-900 dark:text-forge-100;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center rounded-xl bg-forge-500 px-4 py-2 text-sm font-semibold text-white transition hover:bg-forge-600 disabled:cursor-not-allowed disabled:opacity-60;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center rounded-xl border border-forge-300 px-3 py-2 text-sm font-medium text-forge-700 transition hover:bg-forge-100 dark:border-forge-700 dark:text-forge-200 dark:hover:bg-forge-800;
+  }
+}

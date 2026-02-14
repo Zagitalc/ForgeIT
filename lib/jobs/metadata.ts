@@ -1,0 +1,139 @@
+import fs from "node:fs";
+import path from "node:path";
+
+import type { ErrorCode, JobRecord, JobStatus, ToolType } from "@/lib/types/api";
+
+const DB_DIR = path.join(process.cwd(), ".forgeit");
+const DB_PATH = path.join(DB_DIR, "jobs.json");
+
+type JobStore = {
+  jobs: JobRecord[];
+};
+
+function ensureStore(): void {
+  fs.mkdirSync(DB_DIR, { recursive: true });
+  if (!fs.existsSync(DB_PATH)) {
+    const initial: JobStore = { jobs: [] };
+    fs.writeFileSync(DB_PATH, JSON.stringify(initial, null, 2), "utf8");
+  }
+}
+
+function readStore(): JobStore {
+  ensureStore();
+  try {
+    const raw = fs.readFileSync(DB_PATH, "utf8");
+    const parsed = JSON.parse(raw) as JobStore;
+    if (!Array.isArray(parsed.jobs)) {
+      return { jobs: [] };
+    }
+    return parsed;
+  } catch {
+    return { jobs: [] };
+  }
+}
+
+function writeStore(store: JobStore): void {
+  fs.writeFileSync(DB_PATH, JSON.stringify(store, null, 2), "utf8");
+}
+
+export function createJobMetadata(params: {
+  id: string;
+  tool: ToolType;
+  inputCount: number;
+  totalBytes: number;
+}): void {
+  const store = readStore();
+  const record: JobRecord = {
+    id: params.id,
+    tool: params.tool,
+    status: "queued",
+    inputCount: params.inputCount,
+    outputCount: 0,
+    totalBytes: params.totalBytes,
+    startedAt: new Date().toISOString(),
+    completedAt: null,
+    errorCode: null,
+    errorMessage: null,
+    outputPath: null,
+    expiresAt: null
+  };
+
+  store.jobs = [record, ...store.jobs.filter((job) => job.id !== params.id)];
+  writeStore(store);
+}
+
+export function updateJobStatus(params: {
+  id: string;
+  status: JobStatus;
+  outputCount?: number;
+  outputPath?: string | null;
+  errorCode?: ErrorCode | null;
+  errorMessage?: string | null;
+  completed?: boolean;
+  expiresAt?: string | null;
+}): void {
+  const store = readStore();
+  const index = store.jobs.findIndex((job) => job.id === params.id);
+  if (index === -1) {
+    return;
+  }
+
+  const existing = store.jobs[index];
+  const updated: JobRecord = {
+    ...existing,
+    status: params.status,
+    outputCount: params.outputCount ?? existing.outputCount,
+    outputPath: params.outputPath ?? existing.outputPath,
+    errorCode: params.errorCode ?? null,
+    errorMessage: params.errorMessage ?? null,
+    completedAt: params.completed ? new Date().toISOString() : existing.completedAt,
+    expiresAt: params.expiresAt ?? existing.expiresAt
+  };
+
+  store.jobs[index] = updated;
+  writeStore(store);
+}
+
+export function getJobMetadata(id: string): JobRecord | null {
+  const store = readStore();
+  return store.jobs.find((job) => job.id === id) ?? null;
+}
+
+export function listJobMetadata(limit = 100): JobRecord[] {
+  const store = readStore();
+  return [...store.jobs]
+    .sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
+    .slice(0, limit);
+}
+
+export function clearOutputPath(id: string): void {
+  const store = readStore();
+  store.jobs = store.jobs.map((job) => (job.id === id ? { ...job, outputPath: null } : job));
+  writeStore(store);
+}
+
+export function deleteJobMetadata(id: string): void {
+  const store = readStore();
+  store.jobs = store.jobs.filter((job) => job.id !== id);
+  writeStore(store);
+}
+
+export function listJobsForCleanup(nowIso: string): JobRecord[] {
+  const now = new Date(nowIso).getTime();
+  const store = readStore();
+
+  return store.jobs.filter((job) => {
+    if (!job.expiresAt) {
+      return false;
+    }
+    return new Date(job.expiresAt).getTime() <= now;
+  });
+}
+
+export function markJobCleaned(id: string): void {
+  const store = readStore();
+  store.jobs = store.jobs.map((job) =>
+    job.id === id ? { ...job, outputPath: null, expiresAt: null } : job
+  );
+  writeStore(store);
+}

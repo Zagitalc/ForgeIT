@@ -1,0 +1,41 @@
+{
+  "name": "forgeit",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "verify-deps": "tsx scripts/verify-deps.ts"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "docx": "^9.3.0",
+    "jszip": "^3.10.1",
+    "markdown-it": "^14.1.0",
+    "mime-types": "^2.1.35",
+    "nanoid": "^5.1.5",
+    "next": "^15.5.6",
+    "pdf-lib": "^1.17.1",
+    "playwright-core": "^1.51.1",
+    "react": "19.0.0",
+    "react-dom": "19.0.0",
+    "sharp": "^0.33.5",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/mime-types": "^2.1.4",
+    "@types/node": "^22.13.10",
+    "@types/react": "^19.0.10",
+    "@types/react-dom": "^19.0.4",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.3",
+    "tailwindcss": "^3.4.17",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.2",
+    "vitest": "^3.0.8"
+  }
+}

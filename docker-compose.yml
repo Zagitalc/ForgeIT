@@ -1,0 +1,21 @@
+services:
+  forgeit:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - LIBREOFFICE_PATH=/usr/bin/soffice
+      - CHROMIUM_PATH=/usr/bin/chromium
+      - FORGEIT_TEMP_ROOT=/tmp/forgeit
+    volumes:
+      - forgeit_tmp:/tmp/forgeit
+      - forgeit_data:/app/.forgeit
+      - ./fonts:/usr/local/share/fonts/custom:ro
+    restart: unless-stopped
+
+volumes:
+  forgeit_tmp:
+  forgeit_data:
