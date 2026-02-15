@@ -82,6 +82,22 @@ describe("sortZipEntriesForTest", () => {
 
     expect(sorted).toEqual(["/tmp/three.pdf", "/tmp/one.pdf", "/tmp/two.pdf"]);
   });
+
+  it("sorts text-month statement filenames chronologically and keeps unparsed entries last", () => {
+    const sorted = sortZipEntriesForTest({
+      outputPaths: ["/tmp/a.pdf", "/tmp/b.pdf", "/tmp/c.pdf", "/tmp/d.pdf"],
+      inputNames: [
+        "Statement 02-FEB-26 AC 30967726.pdf",
+        "notes.pdf",
+        "Statement 01-SEP-25 AC 30967726.pdf",
+        "Statement 08-DEC-21 AC 30967726.pdf"
+      ],
+      tool: "pdf.merge",
+      options: { outputSortBy: "filename_date", outputSortDirection: "asc", filenameDateMode: "smart" }
+    });
+
+    expect(sorted).toEqual(["/tmp/d.pdf", "/tmp/c.pdf", "/tmp/a.pdf", "/tmp/b.pdf"]);
+  });
 });
 
 describe("createOutputZip", () => {
@@ -147,5 +163,30 @@ describe("createOutputZip", () => {
 
     expect(fileNames[0]).toContain("2024-12-31-1.pdf");
     expect(fileNames[1]).toContain("2025-07-02-2.pdf");
+  });
+
+  it("renders {filedate:*} token from statement DD-MMM-YY filenames", async () => {
+    const outputA = path.join(tmpDir, "a.pdf");
+    const outputB = path.join(tmpDir, "b.pdf");
+    await fs.writeFile(outputA, "A");
+    await fs.writeFile(outputB, "B");
+
+    const zipPath = path.join(tmpDir, "result-statement-filedate.zip");
+    await createOutputZip({
+      outputPaths: [outputA, outputB],
+      inputNames: ["Statement 02-DEC-24 AC 30967726.pdf", "Statement 01-SEP-25 AC 30967726.pdf"],
+      sourceModifieds: [0, 0],
+      tool: "pdf.merge",
+      options: { outputSortBy: "filename_date", outputSortDirection: "asc", filenameDateMode: "smart" },
+      namingPattern: "{filedate:YYYY-MM-DD}-{index}",
+      destinationPath: zipPath
+    });
+
+    const buffer = await fs.readFile(zipPath);
+    const archive = await JSZip.loadAsync(buffer);
+    const fileNames = Object.keys(archive.files).filter((name) => !archive.files[name].dir).sort();
+
+    expect(fileNames[0]).toContain("2024-12-02-1.pdf");
+    expect(fileNames[1]).toContain("2025-09-01-2.pdf");
   });
 });

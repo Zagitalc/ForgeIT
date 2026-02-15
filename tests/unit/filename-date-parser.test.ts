@@ -18,6 +18,25 @@ describe("parseFilenameDate", () => {
     expect(formatFileDate(result.dateMs ?? 0, "YYYY-MM-DD")).toBe("2025-12-03");
   });
 
+  it("parses statement DD-MMM-YY dates in smart mode", () => {
+    const result = parseFilenameDate("Statement 01-DEC-25 AC 30967726 02051017.pdf");
+    expect(result.matched).toBe(true);
+    expect(result.strategy).toBe("text_month");
+    expect(formatFileDate(result.dateMs ?? 0, "YYYY-MM-DD")).toBe("2025-12-01");
+  });
+
+  it("parses mixed-case month names including SEPT", () => {
+    const mixed = parseFilenameDate("Statement 08-SepT-21 AC 30967726.pdf");
+    expect(mixed.matched).toBe(true);
+    expect(formatFileDate(mixed.dateMs ?? 0, "YYYY-MM-DD")).toBe("2021-09-08");
+  });
+
+  it("treats unknown month tokens as unparseable", () => {
+    const result = parseFilenameDate("Statement 01-XYZ-25 AC 30967726.pdf");
+    expect(result.matched).toBe(false);
+    expect(result.strategy).toBe("none");
+  });
+
   it("supports custom regex with named date/time groups", () => {
     const options: JobOptions = {
       outputSortBy: "filename_date",
@@ -30,6 +49,20 @@ describe("parseFilenameDate", () => {
     expect(result.matched).toBe(true);
     expect(result.strategy).toBe("custom");
     expect(formatFileDate(result.dateMs ?? 0, "YYYY-MM-DD")).toBe("2026-01-15");
+  });
+
+  it("supports custom DD-MMM-YY date with no time", () => {
+    const options: JobOptions = {
+      outputSortBy: "filename_date",
+      filenameDateMode: "custom",
+      filenameDateRegex: "Statement\\s+(?<date>\\d{2}-[A-Za-z]{3}-\\d{2})",
+      filenameDateDateFormat: "DD-MMM-YY",
+      filenameDateTimeFormat: "none"
+    };
+    const result = parseFilenameDate("Statement 02-FEB-26 AC 30967726.pdf", options);
+    expect(result.matched).toBe(true);
+    expect(result.strategy).toBe("custom");
+    expect(formatFileDate(result.dateMs ?? 0, "YYYY-MM-DD")).toBe("2026-02-02");
   });
 
   it("treats invalid custom regex configuration as unparseable", () => {

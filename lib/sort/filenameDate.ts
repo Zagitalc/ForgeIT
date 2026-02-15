@@ -3,7 +3,7 @@ import type { JobOptions } from "@/lib/types/api";
 export type FilenameDateParseResult = {
   dateMs: number | null;
   matched: boolean;
-  strategy: "custom" | "payslip" | "iso" | "compact" | "none";
+  strategy: "custom" | "payslip" | "text_month" | "iso" | "compact" | "none";
 };
 
 type DateParts = {
@@ -18,8 +18,31 @@ type TimeParts = {
   second: number;
 };
 
+const MONTH_MAP: Record<string, number> = {
+  jan: 1,
+  feb: 2,
+  mar: 3,
+  apr: 4,
+  may: 5,
+  jun: 6,
+  jul: 7,
+  aug: 8,
+  sep: 9,
+  oct: 10,
+  nov: 11,
+  dec: 12
+};
+
 function toInt(value: string): number {
   return Number.parseInt(value, 10);
+}
+
+function normalizeMonthToken(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "sept") {
+    return "sep";
+  }
+  return normalized.slice(0, 3);
 }
 
 function isValidDateParts(parts: DateParts): boolean {
@@ -55,6 +78,18 @@ function toEpochMs(dateParts: DateParts, timeParts: TimeParts): number | null {
 }
 
 function parseDateByFormat(raw: string, format: NonNullable<JobOptions["filenameDateDateFormat"]>): DateParts | null {
+  if (format === "DD-MMM-YY") {
+    const match = raw.match(/^(\d{2})-([A-Za-z]{3,4})-(\d{2})$/);
+    if (!match) return null;
+    const month = MONTH_MAP[normalizeMonthToken(match[2])];
+    if (!month) return null;
+    return {
+      day: toInt(match[1]),
+      month,
+      year: 2000 + toInt(match[3])
+    };
+  }
+
   if (format === "DDMMYY") {
     if (!/^\d{6}$/.test(raw)) return null;
     return {
@@ -82,6 +117,10 @@ function parseDateByFormat(raw: string, format: NonNullable<JobOptions["filename
 }
 
 function parseTimeByFormat(raw: string | undefined, format: NonNullable<JobOptions["filenameDateTimeFormat"]>): TimeParts | null {
+  if (format === "none") {
+    return { hour: 0, minute: 0, second: 0 };
+  }
+
   if (!raw) {
     return { hour: 0, minute: 0, second: 0 };
   }
@@ -122,6 +161,17 @@ function parseSmart(filename: string): FilenameDateParseResult {
     const ms = parseByFormat(payslip[1], payslip[2], "DDMMYY", "HHMMSS");
     if (ms !== null) {
       return { dateMs: ms, matched: true, strategy: "payslip" };
+    }
+  }
+
+  const textMonth = filename.match(/(\d{2}-[A-Za-z]{3,4}-\d{2})(?:[T _-](\d{2}:\d{2}:\d{2}|\d{6}))?/);
+  if (textMonth) {
+    const timeRaw = textMonth[2];
+    const format: NonNullable<JobOptions["filenameDateTimeFormat"]> =
+      timeRaw ? (timeRaw.includes(":") ? "HH:mm:ss" : "HHMMSS") : "none";
+    const ms = parseByFormat(textMonth[1], timeRaw, "DD-MMM-YY", format);
+    if (ms !== null) {
+      return { dateMs: ms, matched: true, strategy: "text_month" };
     }
   }
 

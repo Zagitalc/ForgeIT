@@ -14,9 +14,9 @@ export const createJobSchema = z.object({
       filenameDateMode: z.union([z.literal("smart"), z.literal("custom")]).optional(),
       filenameDateRegex: z.string().max(250).optional(),
       filenameDateDateFormat: z
-        .union([z.literal("DDMMYY"), z.literal("YYYYMMDD"), z.literal("YYYY-MM-DD")])
+        .union([z.literal("DDMMYY"), z.literal("YYYYMMDD"), z.literal("YYYY-MM-DD"), z.literal("DD-MMM-YY")])
         .optional(),
-      filenameDateTimeFormat: z.union([z.literal("HHMMSS"), z.literal("HH:mm:ss")]).optional(),
+      filenameDateTimeFormat: z.union([z.literal("HHMMSS"), z.literal("HH:mm:ss"), z.literal("none")]).optional(),
       filenameDateIgnoreCase: z.boolean().optional(),
       splitPages: z.string().max(120).optional(),
       rotateDegrees: z.union([z.literal(90), z.literal(180), z.literal(270)]).optional(),

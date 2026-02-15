@@ -75,8 +75,8 @@ export type JobOptions = {
   outputSortDirection?: "asc" | "desc";
   filenameDateMode?: "smart" | "custom";
   filenameDateRegex?: string;
-  filenameDateDateFormat?: "DDMMYY" | "YYYYMMDD" | "YYYY-MM-DD";
-  filenameDateTimeFormat?: "HHMMSS" | "HH:mm:ss";
+  filenameDateDateFormat?: "DDMMYY" | "YYYYMMDD" | "YYYY-MM-DD" | "DD-MMM-YY";
+  filenameDateTimeFormat?: "HHMMSS" | "HH:mm:ss" | "none";
   filenameDateIgnoreCase?: boolean;
   splitPages?: string;
   rotateDegrees?: 90 | 180 | 270;

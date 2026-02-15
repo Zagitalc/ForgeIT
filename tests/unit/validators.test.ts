@@ -83,4 +83,18 @@ describe("createJobSchema filename_date options", () => {
     });
     expect(parsed.success).toBe(false);
   });
+
+  it("accepts custom text-month format with no time", () => {
+    const parsed = createJobSchema.safeParse({
+      tool: "pdf.merge",
+      options: {
+        outputSortBy: "filename_date",
+        filenameDateMode: "custom",
+        filenameDateRegex: "Statement\\s+(?<date>\\d{2}-[A-Za-z]{3}-\\d{2})",
+        filenameDateDateFormat: "DD-MMM-YY",
+        filenameDateTimeFormat: "none"
+      }
+    });
+    expect(parsed.success).toBe(true);
+  });
 });
