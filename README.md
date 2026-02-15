@@ -1,44 +1,52 @@
 # ForgeIT
 
-ForgeIT is a local-first file converter and PDF toolkit built with Next.js, Tailwind, and TypeScript.
+ForgeIT is a local-first converter/PDF toolkit built with Next.js, Tailwind, and TypeScript.
 
-## Features in v1
+## What v2 includes
 
 - Word (`.docx`) -> PDF via LibreOffice headless
-- HTML -> PDF via Chromium
-- Markdown -> Word (`.docx`)
-- PDF merge, split, rotate, page numbering, PDF -> images
-- Image resize/compress/format conversion, images -> PDF
-- Batch output as ZIP with naming patterns
-- Metadata-only job history
+- HTML -> PDF via Chromium (Playwright core)
+- Markdown -> DOCX
+- PDF tools: merge, split, rotate, page numbers, PDF -> images
+- Image tools: resize/compress/format conversion, images -> PDF
+- Smart output sorting before packaging:
+  - by `name`, `date`, or `filename_date`
+  - `asc` / `desc`
+  - smart filename date parsing supports numeric and text-month formats (for example `DD-MMM-YY`)
+- Smart download behavior:
+  - single output -> direct file download
+  - multiple outputs -> ZIP
+- Metadata-only history with re-run/reuse/delete actions
+- Mobile-first app shell + light/dark Forge theme
 
-## Explicitly Out of Scope in v1
+## Out of scope
 
 - Markdown -> PDF
-- Cloud API conversion
+- Cloud/API conversion services
 - Excel/PowerPoint conversion
-- Host filesystem move/rename actions
+- Host filesystem organizer/DMS behavior
 
-## Architecture
+## Runtime architecture
 
 - Next.js App Router + Node runtime API routes
-- Queue-based async job processing
+- Queue-based async processing
 - Global concurrent jobs: `2`
-- LibreOffice conversion mutex: `1`
-- Temp storage under `/tmp/forgeit`
-- Metadata store at `.forgeit/jobs.json`
+- Word conversion mutex: `1`
+- Temp storage: `/tmp/forgeit`
+- Metadata store: `.forgeit/jobs.json`
 
-## API
+## API routes
 
-- `POST /api/jobs` enqueue job
-- `GET /api/jobs` list jobs + queue stats
-- `GET /api/jobs/:id` get job status
-- `GET /api/jobs/:id/download` download direct output (single file) or ZIP (batch)
-- `POST /api/jobs/:id/rerun` prefill a rerun workflow
-- `DELETE /api/jobs/:id` delete job history and artifacts
+- `POST /api/jobs` enqueue a job
+- `GET /api/jobs` list jobs + queue stats + limits
+- `GET /api/jobs/:id` get single job status
+- `GET /api/jobs/:id/download` download output (direct file or ZIP)
+- `POST /api/jobs/:id/rerun` re-run if source still available
+- `GET /api/jobs/:id/prefill` load previous options for reuse
+- `DELETE /api/jobs/:id` delete metadata/artifacts
 - `GET /api/health` dependency + queue health
 
-## Tool Values
+## Tool IDs
 
 - `word.docx_to_pdf`
 - `convert.html_pdf`
@@ -51,31 +59,31 @@ ForgeIT is a local-first file converter and PDF toolkit built with Next.js, Tail
 - `image.process`
 - `convert.images_pdf`
 
-## Docker-First Setup (Recommended)
+## Setup
+
+### Docker-first (recommended)
 
 ```bash
 docker compose up --build
 ```
 
-App runs at [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000).
 
-### Docker includes
-
+Docker image includes:
 - LibreOffice
 - Chromium
 - Poppler (`pdftoppm`)
+- qpdf (used for reliable PDF merge, especially bank statements)
 - Noto + Liberation fonts
 
-Optional custom fonts can be mounted via `./fonts` (already wired in `docker-compose.yml`).
-
-## Native Setup (Secondary)
+### Native setup
 
 Prerequisites:
-
 - Node.js 20.x
 - LibreOffice 7+
 - Chromium
-- Poppler (`pdftoppm`) for PDF -> images
+- Poppler (`pdftoppm`)
+- qpdf (recommended/required for robust PDF merge compatibility)
 
 Install and run:
 
@@ -85,64 +93,82 @@ npm run verify-deps
 npm run dev
 ```
 
-## Environment Variables
+## Environment variables
 
-- `LIBREOFFICE_PATH` optional override for `soffice`
-- `CHROMIUM_PATH` optional override for chromium executable
-- `FORGEIT_TEMP_ROOT` optional temp root (default `/tmp/forgeit`)
-- `LIBREOFFICE_TIMEOUT_MS` optional conversion timeout (default `60000`)
+- `LIBREOFFICE_PATH`: optional `soffice` override
+- `CHROMIUM_PATH`: optional Chromium executable override
+- `FORGEIT_TEMP_ROOT`: optional temp root (default `/tmp/forgeit`)
+- `LIBREOFFICE_TIMEOUT_MS`: Word conversion timeout (default `60000`)
 
-## Limits and Safety Defaults
+## Limits and safety defaults
 
-- Max files per job: `20`
+- Max files/job: `30`
 - Max file size: `50MB`
-- Max total upload per job: `200MB`
-- Queue full returns HTTP `429`
+- Max total/job: `200MB`
+- Queue full: HTTP `429`
 
 Security defaults:
-
-- MIME and extension checks
+- MIME + extension validation
 - Filename sanitization
 - Path traversal protection
 - No outbound conversion API calls
 
-## Cleanup Lifecycle
+## Cleanup lifecycle
 
-- Inputs/processing artifacts removed immediately on success
-- Output ZIP expires after 30 minutes
-- Failed job artifacts expire after 1 hour
+- Inputs/processing removed after success
+- Output artifacts expire after 30 minutes
+- Failed artifacts expire after 1 hour
 - Sweeper runs every 15 minutes
 - Startup sweep removes stale temp data older than 24 hours
 
-## PWA Offline Scope
+## PWA/offline scope
 
-- Installable shell and cached assets are available offline
+- App shell and cached assets are available offline
 - New conversion jobs still require local server runtime and dependencies
 
 ## Troubleshooting
 
+### PDF merge succeeds but output is blank/corrupt (bank statements)
+
+Cause:
+- Some protected PDFs merge poorly with pure JS engines.
+
+Fix:
+- Ensure `qpdf` is installed and available on PATH.
+- Re-run merge (new output will be generated through qpdf-first path).
+
 ### LibreOffice missing
 
-- Install LibreOffice and run `npm run verify-deps`
-- Set `LIBREOFFICE_PATH` if not on PATH
+- Install LibreOffice
+- Run `npm run verify-deps`
+- Set `LIBREOFFICE_PATH` if needed
 
 ### HTML -> PDF fails
 
-- Install Chromium and set `CHROMIUM_PATH`
+- Install Chromium
+- Set `CHROMIUM_PATH` if needed
 
 ### PDF -> images fails
 
 - Install Poppler (`pdftoppm`)
 
-### Layout differences in Word -> PDF
+### Word layout mismatch
 
 - Install source fonts used by the document
-- Use mounted `./fonts` directory in Docker for custom fonts
+- In Docker, mount custom fonts under `./fonts`
 
 ## Tests
+
+Run all tests:
 
 ```bash
 npm test
 ```
 
-Includes unit and integration coverage for validators, naming, PDF range parser, and queue behavior.
+Run coverage:
+
+```bash
+npm run test:coverage
+```
+
+Includes unit/integration coverage for sorting, validators, queue behavior, download routing, processor flows, and PDF operation paths.
