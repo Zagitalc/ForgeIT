@@ -10,11 +10,24 @@ function compareText(left: string, right: string, direction: "asc" | "desc"): nu
 export function sortJobFiles(files: JobFile[], options?: JobOptions): JobFile[] {
   const sortBy = options?.outputSortBy ?? "name";
   const direction = options?.outputSortDirection ?? "asc";
+  const parsedByName = new Map<string, ReturnType<typeof parseFilenameDate>>();
 
   return [...files].sort((left, right) => {
     if (sortBy === "filename_date") {
-      const l = parseFilenameDate(left.originalName, options);
-      const r = parseFilenameDate(right.originalName, options);
+      const l =
+        parsedByName.get(left.originalName) ??
+        (() => {
+          const parsed = parseFilenameDate(left.originalName, options);
+          parsedByName.set(left.originalName, parsed);
+          return parsed;
+        })();
+      const r =
+        parsedByName.get(right.originalName) ??
+        (() => {
+          const parsed = parseFilenameDate(right.originalName, options);
+          parsedByName.set(right.originalName, parsed);
+          return parsed;
+        })();
 
       if (l.matched !== r.matched) {
         return l.matched ? -1 : 1;

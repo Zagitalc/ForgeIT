@@ -122,8 +122,8 @@ export function Dashboard() {
   const [outputSortDirection, setOutputSortDirection] = useState<"asc" | "desc">("asc");
   const [filenameDateMode, setFilenameDateMode] = useState<"smart" | "custom">("smart");
   const [filenameDateRegex, setFilenameDateRegex] = useState("^[^-]+-(?<date>\\d{6})-(?<time>\\d{6})-");
-  const [filenameDateDateFormat, setFilenameDateDateFormat] = useState<"DDMMYY" | "YYYYMMDD" | "YYYY-MM-DD">("DDMMYY");
-  const [filenameDateTimeFormat, setFilenameDateTimeFormat] = useState<"HHMMSS" | "HH:mm:ss">("HHMMSS");
+  const [filenameDateDateFormat, setFilenameDateDateFormat] = useState<"DDMMYY" | "YYYYMMDD" | "YYYY-MM-DD" | "DD-MMM-YY">("DDMMYY");
+  const [filenameDateTimeFormat, setFilenameDateTimeFormat] = useState<"HHMMSS" | "HH:mm:ss" | "none">("HHMMSS");
   const [filenameDateIgnoreCase, setFilenameDateIgnoreCase] = useState(false);
   const [jobId, setJobId] = useState<string | null>(null);
   const [message, setMessage] = useState<string>("");
@@ -812,10 +812,13 @@ export function Dashboard() {
                             className="input"
                             value={filenameDateDateFormat}
                             onChange={(event) =>
-                              setFilenameDateDateFormat(event.target.value as "DDMMYY" | "YYYYMMDD" | "YYYY-MM-DD")
+                              setFilenameDateDateFormat(
+                                event.target.value as "DDMMYY" | "YYYYMMDD" | "YYYY-MM-DD" | "DD-MMM-YY"
+                              )
                             }
                           >
                             <option value="DDMMYY">DDMMYY</option>
+                            <option value="DD-MMM-YY">DD-MMM-YY</option>
                             <option value="YYYYMMDD">YYYYMMDD</option>
                             <option value="YYYY-MM-DD">YYYY-MM-DD</option>
                           </select>
@@ -828,9 +831,10 @@ export function Dashboard() {
                             className="input"
                             value={filenameDateTimeFormat}
                             onChange={(event) =>
-                              setFilenameDateTimeFormat(event.target.value as "HHMMSS" | "HH:mm:ss")
+                              setFilenameDateTimeFormat(event.target.value as "HHMMSS" | "HH:mm:ss" | "none")
                             }
                           >
+                            <option value="none">none</option>
                             <option value="HHMMSS">HHMMSS</option>
                             <option value="HH:mm:ss">HH:mm:ss</option>
                           </select>

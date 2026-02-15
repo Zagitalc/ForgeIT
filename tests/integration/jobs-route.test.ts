@@ -302,4 +302,71 @@ describe("/api/jobs route", () => {
       })
     );
   });
+
+  it("POST accepts custom text-month filename-date options", async () => {
+    const createJobMetadata = vi.fn();
+
+    vi.doMock("nanoid", () => ({ nanoid: vi.fn(() => "job-custom-text-month") }));
+    vi.doMock("@/lib/converters/libreofficeHealth", () => ({
+      checkLibreOfficeHealth: vi.fn(async () => ({ available: true, path: "/usr/bin/soffice" }))
+    }));
+    vi.doMock("@/lib/storage/paths", () => ({
+      ensureDirs: vi.fn(async () => undefined),
+      uploadsDir: vi.fn(() => "/tmp/uploads/job-custom-text-month")
+    }));
+    vi.doMock("@/lib/storage/files", () => ({
+      persistUploadFile: vi.fn(async () => ({
+        originalName: "Statement 01-DEC-25 AC 30967726.pdf",
+        mimeType: "application/pdf",
+        storedPath: "/tmp/uploads/job-custom-text-month/file.pdf",
+        bytes: 8,
+        lastModifiedMs: 12345
+      })),
+      removePath: vi.fn(async () => undefined)
+    }));
+    vi.doMock("@/lib/jobs/metadata", () => ({
+      createJobMetadata,
+      deleteJobMetadata: vi.fn(),
+      listJobMetadata: vi.fn(() => [])
+    }));
+    vi.doMock("@/lib/jobs/queue", () => ({
+      jobQueue: {
+        stats: vi.fn(() => ({ active: 0, queued: 0 })),
+        enqueue: vi.fn()
+      }
+    }));
+
+    const { POST } = await import("@/app/api/jobs/route");
+    const formData = new FormData();
+    formData.set("tool", "pdf.merge");
+    formData.set(
+      "options",
+      JSON.stringify({
+        outputSortBy: "filename_date",
+        outputSortDirection: "asc",
+        filenameDateMode: "custom",
+        filenameDateRegex: "Statement\\s+(?<date>\\d{2}-[A-Za-z]{3}-\\d{2})",
+        filenameDateDateFormat: "DD-MMM-YY",
+        filenameDateTimeFormat: "none",
+        filenameDateIgnoreCase: true
+      })
+    );
+    formData.append("files", new File(["fake-pdf"], "one.pdf", { type: "application/pdf", lastModified: 12345 }));
+
+    const response = await POST(makeRequest(formData) as never);
+    const payload = await response.json();
+
+    expect(response.status).toBe(202);
+    expect(payload.ok).toBe(true);
+    expect(createJobMetadata).toHaveBeenCalledWith(
+      expect.objectContaining({
+        options: expect.objectContaining({
+          outputSortBy: "filename_date",
+          filenameDateMode: "custom",
+          filenameDateDateFormat: "DD-MMM-YY",
+          filenameDateTimeFormat: "none"
+        })
+      })
+    );
+  });
 });
