@@ -3,6 +3,8 @@ import path from "node:path";
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { AppError } from "@/lib/errors";
+
 describe("processJob", () => {
   beforeEach(() => {
     vi.resetModules();
@@ -196,6 +198,62 @@ describe("processJob", () => {
         status: "completed",
         sortParseMatched: 2,
         sortParseTotal: 2
+      })
+    );
+  });
+
+  it("persists merge failure details for actionable troubleshooting", async () => {
+    const updateJobStatus = vi.fn();
+
+    vi.doMock("@/lib/jobs/metadata", () => ({ updateJobStatus }));
+    vi.doMock("@/lib/storage/files", () => ({ removePath: vi.fn(async () => undefined) }));
+    vi.doMock("@/lib/pdf/operations", async () => {
+      const actual = await vi.importActual<typeof import("@/lib/pdf/operations")>("@/lib/pdf/operations");
+      return {
+        ...actual,
+        mergePdfs: vi.fn(async () => {
+          throw new AppError(
+            "PROCESSING_FAILED",
+            "Cannot merge Statement_01-DEC-25.pdf. The file may be encrypted, corrupted, or not a valid PDF.",
+            "Input document to PDFDocument.load is encrypted."
+          );
+        })
+      };
+    });
+
+    const { processJob } = await import("@/lib/jobs/processor");
+
+    await expect(
+      processJob({
+        id: "job-merge-fail",
+        tool: "pdf.merge",
+        files: [
+          {
+            originalName: "a.pdf",
+            mimeType: "application/pdf",
+            storedPath: "/tmp/a.pdf",
+            bytes: 100,
+            lastModifiedMs: 1
+          },
+          {
+            originalName: "b.pdf",
+            mimeType: "application/pdf",
+            storedPath: "/tmp/b.pdf",
+            bytes: 100,
+            lastModifiedMs: 2
+          }
+        ],
+        options: { outputSortBy: "name", outputSortDirection: "asc" }
+      })
+    ).rejects.toThrow("Cannot merge Statement_01-DEC-25.pdf");
+
+    expect(updateJobStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "job-merge-fail",
+        status: "failed",
+        errorCode: "PROCESSING_FAILED",
+        errorMessage:
+          "Cannot merge Statement_01-DEC-25.pdf. The file may be encrypted, corrupted, or not a valid PDF. (Input document to PDFDocument.load is encrypted.)"
       })
     );
   });

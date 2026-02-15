@@ -18,8 +18,23 @@ import { libreOfficeProfileDir, outputsDir, processingDir, uploadsDir } from "@/
 import type { EnqueuedJob } from "@/lib/types/jobs";
 import { assertExtension } from "@/lib/validators";
 
+type AppErrorShape = {
+  code: string;
+  message: string;
+  details?: string;
+};
+
 function addTtl(ms: number): string {
   return new Date(Date.now() + ms).toISOString();
+}
+
+function isAppErrorShape(error: unknown): error is AppErrorShape {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const candidate = error as Partial<AppErrorShape>;
+  return typeof candidate.code === "string" && typeof candidate.message === "string";
 }
 
 export async function processJob(job: EnqueuedJob): Promise<void> {
@@ -223,17 +238,25 @@ export async function processJob(job: EnqueuedJob): Promise<void> {
     await removePath(workDirectory);
     await removePath(libreOfficeProfileDir(job.id));
 
-    const appError =
-      error instanceof AppError
-        ? error
+    const appError = error instanceof AppError
+      ? error
+      : isAppErrorShape(error)
+        ? new AppError(
+            error.code as AppError["code"],
+            error.message,
+            typeof error.details === "string" ? error.details : undefined
+          )
         : new AppError("PROCESSING_FAILED", "Job processing failed.", error instanceof Error ? error.message : undefined);
+    const persistedErrorMessage = appError.details
+      ? `${appError.message} (${appError.details})`
+      : appError.message;
 
     updateJobStatus({
       id: job.id,
       status: "failed",
       progress: 100,
       errorCode: appError.code,
-      errorMessage: appError.message,
+      errorMessage: persistedErrorMessage,
       sourceFilesAvailable: false,
       completed: true,
       expiresAt: addTtl(LIMITS.failedCleanupTtlMs)
