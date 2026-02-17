@@ -33,6 +33,10 @@ type ConverterPanelProps = {
   toolNeedsSplitPages: boolean;
   splitPages: string;
   setSplitPages: (value: string) => void;
+  toolNeedsPdfCompress: boolean;
+  pdfCompressMode: "safe";
+  setPdfCompressMode: (value: "safe") => void;
+  qpdfAvailable: boolean;
   toolNeedsRotate: boolean;
   rotateDegrees: 90 | 180 | 270;
   setRotateDegrees: (value: 90 | 180 | 270) => void;
@@ -91,6 +95,10 @@ export function ConverterPanel({
   toolNeedsSplitPages,
   splitPages,
   setSplitPages,
+  toolNeedsPdfCompress,
+  pdfCompressMode,
+  setPdfCompressMode,
+  qpdfAvailable,
   toolNeedsRotate,
   rotateDegrees,
   setRotateDegrees,
@@ -213,6 +221,23 @@ export function ConverterPanel({
           <div>
             <label className="field-label">Page range (e.g. 1,3-5)</label>
             <input className="text-input" value={splitPages} onChange={(event) => setSplitPages(event.target.value)} />
+          </div>
+        )}
+
+        {toolNeedsPdfCompress && (
+          <div>
+            <label className="field-label">Compression Mode</label>
+            <select
+              className="select-input"
+              value={pdfCompressMode}
+              onChange={(event) => setPdfCompressMode(event.target.value as "safe")}
+            >
+              <option value="safe">Safe (lossless)</option>
+            </select>
+            <p className="preview-note">Optimizes PDF structure and streams without intentional quality loss.</p>
+            {!qpdfAvailable && (
+              <p className="text-xs text-red-500">qpdf not detected. Install qpdf to use PDF compression.</p>
+            )}
           </div>
         )}
 

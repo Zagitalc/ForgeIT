@@ -18,6 +18,7 @@ export const createJobSchema = z.object({
         .optional(),
       filenameDateTimeFormat: z.union([z.literal("HHMMSS"), z.literal("HH:mm:ss"), z.literal("none")]).optional(),
       filenameDateIgnoreCase: z.boolean().optional(),
+      pdfCompressMode: z.literal("safe").optional(),
       splitPages: z.string().max(120).optional(),
       rotateDegrees: z.union([z.literal(90), z.literal(180), z.literal(270)]).optional(),
       imageFormat: z.union([z.literal("jpeg"), z.literal("png"), z.literal("webp")]).optional(),

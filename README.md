@@ -8,6 +8,7 @@ ForgeIT is a local-first converter/PDF toolkit built with Next.js, Tailwind, and
 - HTML -> PDF via Chromium (Playwright core)
 - Markdown -> DOCX
 - PDF tools: merge, split, rotate, page numbers, PDF -> images
+- PDF tools: merge, compress, split, rotate, page numbers, PDF -> images
 - Image tools: resize/compress/format conversion, images -> PDF
 - Smart output sorting before packaging:
   - by `name`, `date`, or `filename_date`
@@ -52,6 +53,7 @@ ForgeIT is a local-first converter/PDF toolkit built with Next.js, Tailwind, and
 - `convert.html_pdf`
 - `convert.markdown_docx`
 - `pdf.merge`
+- `pdf.compress`
 - `pdf.split`
 - `pdf.rotate`
 - `pdf.page_numbers`

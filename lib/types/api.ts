@@ -3,6 +3,7 @@ export const TOOL_TYPES = [
   "convert.html_pdf",
   "convert.markdown_docx",
   "pdf.merge",
+  "pdf.compress",
   "pdf.split",
   "pdf.rotate",
   "pdf.page_numbers",
@@ -66,6 +67,9 @@ export type JobRecord = {
   sourceFilesAvailable?: boolean;
   sortParseMatched?: number;
   sortParseTotal?: number;
+  inputBytesBefore?: number;
+  outputBytesAfter?: number;
+  compressionSavingsPct?: number;
   expiresAt: string | null;
 };
 
@@ -78,6 +82,7 @@ export type JobOptions = {
   filenameDateDateFormat?: "DDMMYY" | "YYYYMMDD" | "YYYY-MM-DD" | "DD-MMM-YY";
   filenameDateTimeFormat?: "HHMMSS" | "HH:mm:ss" | "none";
   filenameDateIgnoreCase?: boolean;
+  pdfCompressMode?: "safe";
   splitPages?: string;
   rotateDegrees?: 90 | 180 | 270;
   imageFormat?: "jpeg" | "png" | "webp";

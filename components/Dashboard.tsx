@@ -21,6 +21,7 @@ type HealthResponse = {
   ok: boolean;
   data: {
     libreOffice: { available: boolean; path: string | null };
+    qpdf: { available: boolean; path: string | null; version?: string };
     queue: { active: number; queued: number };
   };
 };
@@ -38,6 +39,7 @@ const TOOL_OPTIONS: ToolOption[] = [
   { label: "HTML -> PDF", value: "convert.html_pdf", tab: "Convert", accepts: ".html,.htm" },
   { label: "Markdown -> DOCX", value: "convert.markdown_docx", tab: "Convert", accepts: ".md,.markdown" },
   { label: "Merge PDFs", value: "pdf.merge", tab: "PDF", accepts: ".pdf" },
+  { label: "Compress PDFs", value: "pdf.compress", tab: "PDF", accepts: ".pdf" },
   { label: "Split PDF", value: "pdf.split", tab: "PDF", accepts: ".pdf" },
   { label: "Rotate PDFs", value: "pdf.rotate", tab: "PDF", accepts: ".pdf" },
   { label: "Add Page Numbers", value: "pdf.page_numbers", tab: "PDF", accepts: ".pdf" },
@@ -115,6 +117,7 @@ export function Dashboard() {
   const [tool, setTool] = useState<ToolType>("word.docx_to_pdf");
   const [files, setFiles] = useState<File[]>([]);
   const [splitPages, setSplitPages] = useState("1-2");
+  const [pdfCompressMode, setPdfCompressMode] = useState<"safe">("safe");
   const [rotateDegrees, setRotateDegrees] = useState<90 | 180 | 270>(90);
   const [imageFormat, setImageFormat] = useState<"jpeg" | "png" | "webp">("jpeg");
   const [imageQuality, setImageQuality] = useState(80);
@@ -256,6 +259,7 @@ export function Dashboard() {
     files.length > 0 &&
     !loading &&
     !(tool === "word.docx_to_pdf" && !health?.libreOffice.available) &&
+    !(tool === "pdf.compress" && !health?.qpdf.available) &&
     !filenameDateValidationError;
 
   useEffect(() => {
@@ -331,7 +335,8 @@ export function Dashboard() {
       splitPages,
       rotateDegrees,
       imageFormat,
-      imageQuality
+      imageQuality,
+      pdfCompressMode
     };
 
     if (outputSortBy === "filename_date") {
@@ -464,6 +469,7 @@ export function Dashboard() {
     setFilenameDateTimeFormat((options.filenameDateTimeFormat as "none" | "HHMMSS" | "HH:mm:ss") ?? "HHMMSS");
     setFilenameDateIgnoreCase(Boolean(options.filenameDateIgnoreCase));
     setSplitPages(options.splitPages ?? "1-2");
+    setPdfCompressMode(options.pdfCompressMode ?? "safe");
     setRotateDegrees(options.rotateDegrees ?? 90);
     setImageFormat(options.imageFormat ?? "jpeg");
     setImageQuality(options.imageQuality ?? 80);
@@ -506,6 +512,7 @@ export function Dashboard() {
       "convert.images_pdf": "pdf",
       "convert.markdown_docx": "docx",
       "pdf.merge": "pdf",
+      "pdf.compress": "pdf",
       "pdf.rotate": "pdf",
       "pdf.page_numbers": "pdf"
     };
@@ -576,6 +583,10 @@ export function Dashboard() {
             toolNeedsSplitPages={tool === "pdf.split"}
             splitPages={splitPages}
             setSplitPages={setSplitPages}
+            toolNeedsPdfCompress={tool === "pdf.compress"}
+            pdfCompressMode={pdfCompressMode}
+            setPdfCompressMode={setPdfCompressMode}
+            qpdfAvailable={Boolean(health?.qpdf.available)}
             toolNeedsRotate={tool === "pdf.rotate"}
             rotateDegrees={rotateDegrees}
             setRotateDegrees={setRotateDegrees}
