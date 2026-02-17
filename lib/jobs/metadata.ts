@@ -50,7 +50,10 @@ function normalizeJob(job: JobRecord): JobRecord {
     sourceFileModifieds: job.sourceFileModifieds ?? {},
     sourceFilesAvailable: Boolean(job.sourceFilesAvailable),
     sortParseMatched: typeof job.sortParseMatched === "number" ? job.sortParseMatched : undefined,
-    sortParseTotal: typeof job.sortParseTotal === "number" ? job.sortParseTotal : undefined
+    sortParseTotal: typeof job.sortParseTotal === "number" ? job.sortParseTotal : undefined,
+    inputBytesBefore: typeof job.inputBytesBefore === "number" ? job.inputBytesBefore : undefined,
+    outputBytesAfter: typeof job.outputBytesAfter === "number" ? job.outputBytesAfter : undefined,
+    compressionSavingsPct: typeof job.compressionSavingsPct === "number" ? job.compressionSavingsPct : undefined
   };
 }
 
@@ -110,6 +113,9 @@ export function createJobMetadata(params: {
     sourceFileNames: params.sourceFileNames,
     sourceFileModifieds: params.sourceFileModifieds,
     sourceFilesAvailable: true,
+    inputBytesBefore: undefined,
+    outputBytesAfter: undefined,
+    compressionSavingsPct: undefined,
     expiresAt: null
   };
 
@@ -129,6 +135,9 @@ export function updateJobStatus(params: {
   sourceFilesAvailable?: boolean;
   sortParseMatched?: number;
   sortParseTotal?: number;
+  inputBytesBefore?: number;
+  outputBytesAfter?: number;
+  compressionSavingsPct?: number;
   errorCode?: ErrorCode | null;
   errorMessage?: string | null;
   completed?: boolean;
@@ -153,6 +162,9 @@ export function updateJobStatus(params: {
     sourceFilesAvailable: params.sourceFilesAvailable ?? existing.sourceFilesAvailable,
     sortParseMatched: params.sortParseMatched ?? existing.sortParseMatched,
     sortParseTotal: params.sortParseTotal ?? existing.sortParseTotal,
+    inputBytesBefore: params.inputBytesBefore ?? existing.inputBytesBefore,
+    outputBytesAfter: params.outputBytesAfter ?? existing.outputBytesAfter,
+    compressionSavingsPct: params.compressionSavingsPct ?? existing.compressionSavingsPct,
     errorCode: params.errorCode ?? null,
     errorMessage: params.errorMessage ?? null,
     completedAt: params.completed ? new Date().toISOString() : existing.completedAt,

@@ -17,11 +17,24 @@ type HistoryPanelProps = {
 };
 
 function parseSummary(job: JobRecord): string | undefined {
-  if (typeof job.sortParseTotal !== "number" || job.sortParseTotal <= 0) {
-    return undefined;
+  const chunks: string[] = [];
+
+  if (typeof job.sortParseTotal === "number" && job.sortParseTotal > 0) {
+    chunks.push(`Filename date parsed: ${job.sortParseMatched ?? 0}/${job.sortParseTotal}`);
   }
 
-  return `Filename date parsed: ${job.sortParseMatched ?? 0}/${job.sortParseTotal}`;
+  if (
+    job.tool === "pdf.compress" &&
+    typeof job.inputBytesBefore === "number" &&
+    typeof job.outputBytesAfter === "number" &&
+    typeof job.compressionSavingsPct === "number"
+  ) {
+    const beforeMb = (job.inputBytesBefore / (1024 * 1024)).toFixed(1);
+    const afterMb = (job.outputBytesAfter / (1024 * 1024)).toFixed(1);
+    chunks.push(`Saved ${job.compressionSavingsPct.toFixed(2)}% • ${beforeMb}MB -> ${afterMb}MB`);
+  }
+
+  return chunks.length > 0 ? chunks.join(" • ") : undefined;
 }
 
 export function HistoryPanel({

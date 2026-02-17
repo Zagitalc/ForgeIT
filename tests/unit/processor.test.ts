@@ -202,6 +202,148 @@ describe("processJob", () => {
     );
   });
 
+  it("completes single-file pdf.compress with direct download and compression stats", async () => {
+    const updateJobStatus = vi.fn();
+
+    vi.doMock("@/lib/jobs/metadata", () => ({ updateJobStatus }));
+    vi.doMock("@/lib/storage/files", () => ({ removePath: vi.fn(async () => undefined) }));
+    vi.doMock("@/lib/pdf/operations", async () => {
+      const actual = await vi.importActual<typeof import("@/lib/pdf/operations")>("@/lib/pdf/operations");
+      return {
+        ...actual,
+        compressPdf: vi.fn(async (_inputPath: string, outputPath: string) => {
+          await fs.mkdir(path.dirname(outputPath), { recursive: true });
+          await fs.writeFile(outputPath, Buffer.alloc(60));
+        })
+      };
+    });
+
+    const { processJob } = await import("@/lib/jobs/processor");
+    await processJob({
+      id: "job-compress-single",
+      tool: "pdf.compress",
+      files: [
+        {
+          originalName: "doc.pdf",
+          mimeType: "application/pdf",
+          storedPath: "/tmp/doc.pdf",
+          bytes: 100,
+          lastModifiedMs: 20
+        }
+      ],
+      options: { outputSortBy: "name", outputSortDirection: "asc", pdfCompressMode: "safe" }
+    });
+
+    expect(updateJobStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "job-compress-single",
+        status: "completed",
+        canDirectDownload: true,
+        primaryOutputExt: "pdf",
+        inputBytesBefore: 100,
+        outputBytesAfter: 60
+      })
+    );
+  });
+
+  it("routes multi-file pdf.compress output through zip packaging", async () => {
+    const updateJobStatus = vi.fn();
+    const createOutputZip = vi.fn(async ({ destinationPath }: { destinationPath: string }) => {
+      await fs.mkdir(path.dirname(destinationPath), { recursive: true });
+      await fs.writeFile(destinationPath, "zip");
+      return destinationPath;
+    });
+
+    vi.doMock("@/lib/jobs/metadata", () => ({ updateJobStatus }));
+    vi.doMock("@/lib/storage/files", () => ({ removePath: vi.fn(async () => undefined) }));
+    vi.doMock("@/lib/jobs/archive", () => ({ createOutputZip }));
+    vi.doMock("@/lib/pdf/operations", async () => {
+      const actual = await vi.importActual<typeof import("@/lib/pdf/operations")>("@/lib/pdf/operations");
+      return {
+        ...actual,
+        compressPdf: vi.fn(async (_inputPath: string, outputPath: string) => {
+          await fs.mkdir(path.dirname(outputPath), { recursive: true });
+          await fs.writeFile(outputPath, Buffer.alloc(70));
+        })
+      };
+    });
+
+    const { processJob } = await import("@/lib/jobs/processor");
+    await processJob({
+      id: "job-compress-batch",
+      tool: "pdf.compress",
+      files: [
+        {
+          originalName: "a.pdf",
+          mimeType: "application/pdf",
+          storedPath: "/tmp/a.pdf",
+          bytes: 110,
+          lastModifiedMs: 1
+        },
+        {
+          originalName: "b.pdf",
+          mimeType: "application/pdf",
+          storedPath: "/tmp/b.pdf",
+          bytes: 100,
+          lastModifiedMs: 2
+        }
+      ],
+      options: { outputSortBy: "name", outputSortDirection: "asc", pdfCompressMode: "safe" }
+    });
+
+    expect(createOutputZip).toHaveBeenCalledTimes(1);
+    expect(updateJobStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "job-compress-batch",
+        status: "completed",
+        canDirectDownload: false,
+        primaryOutputExt: "zip"
+      })
+    );
+  });
+
+  it("marks pdf.compress failed when compressor throws", async () => {
+    const updateJobStatus = vi.fn();
+
+    vi.doMock("@/lib/jobs/metadata", () => ({ updateJobStatus }));
+    vi.doMock("@/lib/storage/files", () => ({ removePath: vi.fn(async () => undefined) }));
+    vi.doMock("@/lib/pdf/operations", async () => {
+      const actual = await vi.importActual<typeof import("@/lib/pdf/operations")>("@/lib/pdf/operations");
+      return {
+        ...actual,
+        compressPdf: vi.fn(async () => {
+          throw new AppError("PROCESSING_FAILED", "qpdf is required for PDF compression.", "spawn qpdf ENOENT");
+        })
+      };
+    });
+
+    const { processJob } = await import("@/lib/jobs/processor");
+    await expect(
+      processJob({
+        id: "job-compress-fail",
+        tool: "pdf.compress",
+        files: [
+          {
+            originalName: "doc.pdf",
+            mimeType: "application/pdf",
+            storedPath: "/tmp/doc.pdf",
+            bytes: 80,
+            lastModifiedMs: 1
+          }
+        ],
+        options: { pdfCompressMode: "safe" }
+      })
+    ).rejects.toThrow("qpdf is required for PDF compression.");
+
+    expect(updateJobStatus).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: "job-compress-fail",
+        status: "failed",
+        errorCode: "PROCESSING_FAILED"
+      })
+    );
+  });
+
   it("persists merge failure details for actionable troubleshooting", async () => {
     const updateJobStatus = vi.fn();
 

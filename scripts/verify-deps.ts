@@ -3,6 +3,7 @@ import { spawn } from "node:child_process";
 
 import { getChromiumCandidates } from "../lib/config/chromium";
 import { getLibreOfficeCandidates } from "../lib/config/libreoffice";
+import { getQpdfCandidates } from "../lib/config/qpdf";
 
 function runVersion(command: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -47,6 +48,7 @@ async function resolveBinary(candidates: string[], args: string[]): Promise<{ pa
 async function main(): Promise<void> {
   const libreOffice = await resolveBinary(getLibreOfficeCandidates(), ["--version"]);
   const chromium = await resolveBinary(getChromiumCandidates(), ["--version"]);
+  const qpdf = await resolveBinary(getQpdfCandidates(), ["--version"]);
 
   if (!libreOffice) {
     console.error("[FAIL] LibreOffice not found. Install LibreOffice or set LIBREOFFICE_PATH.");
@@ -60,6 +62,13 @@ async function main(): Promise<void> {
     process.exitCode = 1;
   } else {
     console.log(`[OK] Chromium: ${chromium.path} (${chromium.version})`);
+  }
+
+  if (!qpdf) {
+    console.error("[FAIL] qpdf not found. Install qpdf or set QPDF_PATH.");
+    process.exitCode = 1;
+  } else {
+    console.log(`[OK] qpdf: ${qpdf.path} (${qpdf.version})`);
   }
 
   if (process.exitCode === 1) {

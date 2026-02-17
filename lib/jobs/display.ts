@@ -5,6 +5,7 @@ const LABELS: Record<ToolType, string> = {
   "convert.html_pdf": "HTML -> PDF",
   "convert.markdown_docx": "Markdown -> DOCX",
   "pdf.merge": "Merge PDFs",
+  "pdf.compress": "Compress PDFs",
   "pdf.split": "Split PDF",
   "pdf.rotate": "Rotate PDFs",
   "pdf.page_numbers": "Add Page Numbers",

@@ -32,6 +32,52 @@ async function mergePdfsWithQpdf(inputPaths: string[], outputPath: string): Prom
   await fs.access(outputPath);
 }
 
+export async function compressPdf(inputPath: string, outputPath: string, mode: "safe"): Promise<void> {
+  if (mode !== "safe") {
+    throw new AppError("VALIDATION_ERROR", `Unsupported PDF compression mode: ${mode}`);
+  }
+
+  try {
+    const args = [
+      "--object-streams=generate",
+      "--stream-data=compress",
+      "--recompress-flate",
+      "--optimize-images",
+      inputPath,
+      outputPath
+    ];
+    const result = await runCommand("qpdf", args, PDF_TOOL_TIMEOUT_MS);
+    if (result.code !== 0) {
+      throw new AppError(
+        "PROCESSING_FAILED",
+        "PDF compression failed.",
+        result.stderr.trim() || result.stdout.trim() || `qpdf exited with code ${result.code}`
+      );
+    }
+
+    const stat = await fs.stat(outputPath);
+    if (stat.size <= 0) {
+      throw new AppError("PROCESSING_FAILED", "PDF compression failed.", "Output PDF is empty.");
+    }
+  } catch (error) {
+    if (error instanceof AppError) {
+      throw error;
+    }
+    if (isBinaryMissing(error)) {
+      throw new AppError(
+        "PROCESSING_FAILED",
+        "qpdf is required for PDF compression.",
+        error instanceof Error ? error.message : "qpdf binary not found."
+      );
+    }
+    throw new AppError(
+      "PROCESSING_FAILED",
+      "PDF compression failed.",
+      error instanceof Error ? error.message : "Unknown compression error."
+    );
+  }
+}
+
 async function loadPdf(bytes: Uint8Array): Promise<PDFDocument> {
   return PDFDocument.load(bytes, { ignoreEncryption: true });
 }

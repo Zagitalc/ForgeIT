@@ -45,6 +45,38 @@ describe("/api/jobs/[id]/download route", () => {
     expect(response.headers.get("content-disposition")).toContain("out.pdf");
   });
 
+  it("returns direct PDF for completed pdf.compress single output", async () => {
+    vi.doMock("node:fs/promises", () => ({
+      default: {
+        readFile: vi.fn(async () => Buffer.from("compressed-pdf"))
+      }
+    }));
+    vi.doMock("@/lib/jobs/metadata", () => ({
+      getJobMetadata: vi.fn(() => ({
+        id: "j-compress",
+        tool: "pdf.compress",
+        status: "completed",
+        outputPath: "/tmp/out-compressed.pdf",
+        outputCount: 1,
+        canDirectDownload: true
+      }))
+    }));
+    vi.doMock("@/lib/jobs/download", () => ({
+      getDownloadMeta: vi.fn(() => ({
+        canDirectDownload: true,
+        contentType: "application/pdf",
+        fileName: "out-compressed.pdf"
+      }))
+    }));
+
+    const { GET } = await import("@/app/api/jobs/[id]/download/route");
+    const response = await GET({} as never, { params: Promise.resolve({ id: "j-compress" }) });
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("application/pdf");
+    expect(response.headers.get("content-disposition")).toContain("out-compressed.pdf");
+  });
+
   it("returns 404 processing error when job output is not ready", async () => {
     vi.doMock("@/lib/jobs/metadata", () => ({
       getJobMetadata: vi.fn(() => ({

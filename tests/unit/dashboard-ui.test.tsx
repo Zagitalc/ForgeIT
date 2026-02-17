@@ -24,7 +24,11 @@ describe("Dashboard UI shell", () => {
         if (url.includes("/api/health")) {
           return createJsonResponse({
             ok: true,
-            data: { libreOffice: { available: true, path: "/usr/bin/soffice" }, queue: { active: 0, queued: 0 } }
+            data: {
+              libreOffice: { available: true, path: "/usr/bin/soffice" },
+              qpdf: { available: true, path: "/usr/bin/qpdf", version: "qpdf version 12.3.2" },
+              queue: { active: 0, queued: 0 }
+            }
           });
         }
 

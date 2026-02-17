@@ -98,3 +98,25 @@ describe("createJobSchema filename_date options", () => {
     expect(parsed.success).toBe(true);
   });
 });
+
+describe("createJobSchema pdf compression options", () => {
+  it("accepts safe compression mode", () => {
+    const parsed = createJobSchema.safeParse({
+      tool: "pdf.compress",
+      options: {
+        pdfCompressMode: "safe"
+      }
+    });
+    expect(parsed.success).toBe(true);
+  });
+
+  it("rejects unknown compression mode", () => {
+    const parsed = createJobSchema.safeParse({
+      tool: "pdf.compress",
+      options: {
+        pdfCompressMode: "balanced"
+      }
+    });
+    expect(parsed.success).toBe(false);
+  });
+});

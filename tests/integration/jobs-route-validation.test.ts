@@ -99,4 +99,79 @@ describe("/api/jobs POST validation", () => {
     expect(payload.ok).toBe(false);
     expect(payload.error.code).toBe("VALIDATION_ERROR");
   });
+
+  it("accepts pdf.compress with safe mode", async () => {
+    vi.doMock("@/lib/storage/paths", () => ({
+      ensureDirs: vi.fn(async () => undefined),
+      uploadsDir: vi.fn(() => "/tmp/uploads/job-validation")
+    }));
+    vi.doMock("@/lib/storage/files", () => ({
+      persistUploadFile: vi.fn(async () => ({
+        originalName: "one.pdf",
+        mimeType: "application/pdf",
+        storedPath: "/tmp/uploads/job-validation/one.pdf",
+        bytes: 100,
+        lastModifiedMs: 22
+      })),
+      removePath: vi.fn(async () => undefined)
+    }));
+    vi.doMock("@/lib/jobs/metadata", () => ({
+      createJobMetadata: vi.fn(),
+      deleteJobMetadata: vi.fn(),
+      listJobMetadata: vi.fn(() => [])
+    }));
+    vi.doMock("@/lib/jobs/queue", () => ({
+      jobQueue: {
+        stats: vi.fn(() => ({ active: 0, queued: 0 })),
+        enqueue: vi.fn()
+      }
+    }));
+
+    const { POST } = await import("@/app/api/jobs/route");
+    const formData = new FormData();
+    formData.set("tool", "pdf.compress");
+    formData.set("options", JSON.stringify({ pdfCompressMode: "safe" }));
+    formData.append("files", new File(["fake-pdf"], "one.pdf", { type: "application/pdf", lastModified: 22 }));
+
+    const response = await POST(makeRequest(formData) as never);
+    const payload = await response.json();
+
+    expect(response.status).toBe(202);
+    expect(payload.ok).toBe(true);
+  });
+
+  it("rejects pdf.compress with invalid mode", async () => {
+    vi.doMock("@/lib/storage/paths", () => ({
+      ensureDirs: vi.fn(async () => undefined),
+      uploadsDir: vi.fn(() => "/tmp/uploads/job-validation")
+    }));
+    vi.doMock("@/lib/storage/files", () => ({
+      persistUploadFile: vi.fn(),
+      removePath: vi.fn(async () => undefined)
+    }));
+    vi.doMock("@/lib/jobs/metadata", () => ({
+      createJobMetadata: vi.fn(),
+      deleteJobMetadata: vi.fn(),
+      listJobMetadata: vi.fn(() => [])
+    }));
+    vi.doMock("@/lib/jobs/queue", () => ({
+      jobQueue: {
+        stats: vi.fn(() => ({ active: 0, queued: 0 })),
+        enqueue: vi.fn()
+      }
+    }));
+
+    const { POST } = await import("@/app/api/jobs/route");
+    const formData = new FormData();
+    formData.set("tool", "pdf.compress");
+    formData.set("options", JSON.stringify({ pdfCompressMode: "balanced" }));
+    formData.append("files", new File(["fake-pdf"], "one.pdf", { type: "application/pdf", lastModified: 99 }));
+
+    const response = await POST(makeRequest(formData) as never);
+    const payload = await response.json();
+
+    expect(response.status).toBe(400);
+    expect(payload.ok).toBe(false);
+    expect(payload.error.code).toBe("VALIDATION_ERROR");
+  });
 });

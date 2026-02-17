@@ -11,7 +11,7 @@ import { updateJobStatus } from "@/lib/jobs/metadata";
 import { sortJobFiles } from "@/lib/sort/jobFiles";
 import { countFilenameDateMatches } from "@/lib/sort/filenameDate";
 import { convertMarkdownToDocx } from "@/lib/markdown/markdownToDocx";
-import { imagesToPdf, mergePdfs, splitPdf, rotatePdf, addPageNumbers } from "@/lib/pdf/operations";
+import { imagesToPdf, mergePdfs, splitPdf, rotatePdf, addPageNumbers, compressPdf } from "@/lib/pdf/operations";
 import { convertPdfToImages } from "@/lib/pdf/pdfToImages";
 import { removePath } from "@/lib/storage/files";
 import { libreOfficeProfileDir, outputsDir, processingDir, uploadsDir } from "@/lib/storage/paths";
@@ -47,6 +47,9 @@ export async function processJob(job: EnqueuedJob): Promise<void> {
   await fs.mkdir(workDirectory, { recursive: true });
 
   let outputFiles: string[] = [];
+  let inputBytesBefore: number | undefined;
+  let outputBytesAfter: number | undefined;
+  let compressionSavingsPct: number | undefined;
   let sortParseMatched: number | undefined;
   let sortParseTotal: number | undefined;
   const sortedFiles = sortJobFiles(job.files, job.options);
@@ -99,6 +102,19 @@ export async function processJob(job: EnqueuedJob): Promise<void> {
         const output = path.join(workDirectory, "merged.pdf");
         await mergePdfs(sortedFiles.map((file) => file.storedPath), output);
         outputFiles = [output];
+        break;
+      }
+      case "pdf.compress": {
+        if (sortedFiles.length === 0) {
+          throw new AppError("VALIDATION_ERROR", "PDF compression requires at least one PDF.");
+        }
+        inputBytesBefore = sortedFiles.reduce((sum, file) => sum + file.bytes, 0);
+        for (const file of sortedFiles) {
+          assertExtension(file.originalName, ["pdf"]);
+          const output = path.join(workDirectory, `${path.parse(file.originalName).name}-compressed.pdf`);
+          await compressPdf(file.storedPath, output, job.options.pdfCompressMode ?? "safe");
+          outputFiles.push(output);
+        }
         break;
       }
       case "pdf.split": {
@@ -182,6 +198,14 @@ export async function processJob(job: EnqueuedJob): Promise<void> {
       throw new AppError("PROCESSING_FAILED", "No outputs were generated.");
     }
 
+    if (job.tool === "pdf.compress") {
+      const stats = await Promise.all(outputFiles.map(async (filePath) => fs.stat(filePath)));
+      outputBytesAfter = stats.reduce((sum, stat) => sum + stat.size, 0);
+      const before = inputBytesBefore ?? 0;
+      compressionSavingsPct =
+        before > 0 ? Math.max(0, Number((((before - outputBytesAfter) / before) * 100).toFixed(2))) : 0;
+    }
+
     let outputPath: string;
     let canDirectDownload = false;
     let primaryOutputExt = "zip";
@@ -230,6 +254,9 @@ export async function processJob(job: EnqueuedJob): Promise<void> {
       canDirectDownload,
       sortParseMatched,
       sortParseTotal,
+      inputBytesBefore,
+      outputBytesAfter,
+      compressionSavingsPct,
       sourceFilesAvailable: false,
       completed: true,
       expiresAt: addTtl(LIMITS.outputTtlMs)
