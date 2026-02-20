@@ -1,7 +1,7 @@
 export const LIMITS = {
-  maxFilesPerJob: 30,
-  maxFileBytes: 50 * 1024 * 1024,
-  maxTotalBytes: 200 * 1024 * 1024,
+  maxFilesPerJob: 50,
+  maxFileBytes: 150 * 1024 * 1024,
+  maxTotalBytes: 500 * 1024 * 1024,
   maxConcurrentJobs: 2,
   maxQueueSize: 25,
   libreOfficeTimeoutMs: Number(process.env.LIBREOFFICE_TIMEOUT_MS ?? 60_000),

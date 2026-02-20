@@ -51,7 +51,8 @@ export function QueuePanel({
 
       {showPolicy && (
         <p className="queue-policy">
-          Limits: 30 files/job, 50MB/file, 200MB total, 2 concurrent jobs. Word conversion runs single-file mutex.
+          Limits: 50 files/job, 150MB/file, 500MB total, 2 concurrent jobs. Large batches may process slower. Word
+          conversion runs single-file mutex.
         </p>
       )}
     </aside>
