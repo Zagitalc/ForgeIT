@@ -15,7 +15,7 @@ If you want to use this app privately to compress or edit PDFs without your data
 1. Open the **Terminal** app on your Mac (Press `Cmd + Space`, type "Terminal", hit Enter).
 2. Copy and paste this command, then press **Enter**:
    ```
-   docker run -p 3000:3000 zagitalc/forgeit:latest
+   docker run -p 3000:3000 zach1328/forgeit:latest
    ```
 3. Wait about 30–60 seconds while it downloads and starts. When the text stops moving and you see a message that the app is running, you're ready.
 
@@ -53,7 +53,7 @@ If you want to use this app privately to compress or edit PDFs without your data
 ### Run from Docker Hub
 
 ```bash
-docker run -p 3000:3000 zagitalc/forgeit:latest
+docker run -p 3000:3000 zach1328/forgeit:latest
 ```
 
 ### Build and run locally
