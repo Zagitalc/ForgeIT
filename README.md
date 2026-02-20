@@ -2,6 +2,46 @@
 
 ForgeIT is a local-first converter/PDF toolkit built with Next.js, Tailwind, and TypeScript.
 
+## 🟢 Quick Start for Mac Users (No Coding Required!)
+
+If you just want to use this app privately on your computer to compress or edit PDFs without your data ever going to the internet, follow these steps.
+
+Because this app runs 100% offline on your machine, it needs a helper program called Docker to set up the environment safely.
+
+**Step 1: Install Docker**
+1. Go to [Docker's website](https://www.docker.com/products/docker-desktop/) and download **Docker Desktop for Mac**.
+2. Install it like a normal Mac app (drag it to your Applications folder) and open it.
+3. It might ask you to sign up, but you can usually just skip that and proceed to the main dashboard. Leave the Docker app running in the background.
+
+**Step 2: Download This App**
+1. At the top of this GitHub page, click the green **"<> Code"** button.
+2. Click **"Download ZIP"**.
+3. Unzip the folder and place it somewhere easy to find, like your Desktop.
+
+**Step 3: Start the App**
+1. Open the **Terminal** app on your Mac (Press `Cmd + Space`, type "Terminal", and hit Enter).
+2. Type `cd ` (make sure to include the space after `cd`).
+3. Drag and drop the unzipped ForgeIT folder from your Desktop directly into the Terminal window. It will fill in the folder's path for you. Press **Enter**.
+4. Type this exact command and press **Enter**: `docker compose up --build`
+5. The Terminal will start downloading the necessary files. This might take a few minutes the first time. Wait until the text stops moving and you see a message saying the app is running.
+
+**Step 4: Compress Your PDFs!**
+1. Open your web browser (Safari, Chrome, etc.).
+2. Go to: **http://localhost:3000**
+3. You can now safely compress and edit your PDFs. Your files never leave your computer.
+
+*Note: When you are completely done using the app, you can go back to the Terminal window and press `Control + C` to shut it down.*
+
+### Optional: Make launching easier next time
+
+After the first setup, you don't need to repeat Steps 1-4 every time. Instead:
+
+1. In the unzipped ForgeIT folder, find the file called **`start-forgeit.command`**.
+2. Double-click it. It will open Terminal and start the app automatically.
+3. Wait about 30 seconds, then go to **http://localhost:3000** as usual.
+
+> If your Mac warns you that the file can't be opened because it's from an unidentified developer, go to **System Settings -> Privacy & Security** and click **"Open Anyway"**.
+
 ## What v2 includes
 
 - Word (`.docx`) -> PDF via LibreOffice headless
