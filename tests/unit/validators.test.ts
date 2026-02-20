@@ -3,6 +3,10 @@ import { describe, expect, it } from "vitest";
 import { LIMITS } from "@/lib/config/limits";
 import { assertExtension, createJobSchema, enforceFileLimits } from "@/lib/validators";
 
+function makeMockFile(name: string, size: number): File {
+  return { name, size } as File;
+}
+
 describe("enforceFileLimits", () => {
   it("accepts valid file counts and sizes", () => {
     const files = [new File(["hello"], "a.txt", { type: "text/plain" })];
@@ -14,20 +18,17 @@ describe("enforceFileLimits", () => {
   });
 
   it("rejects files above max per-file size", () => {
-    const oversized = new File([new Uint8Array(51 * 1024 * 1024)], "big.pdf", {
-      type: "application/pdf"
-    });
+    const oversized = makeMockFile("big.pdf", LIMITS.maxFileBytes + 1);
     expect(() => enforceFileLimits([oversized])).toThrow(/exceeds maximum size/);
   });
 
   it("rejects total upload size above max", () => {
-    const size = 45 * 1024 * 1024;
+    const size = Math.floor(LIMITS.maxTotalBytes / 4) + 1;
     const files = [
-      new File([new Uint8Array(size)], "a.bin"),
-      new File([new Uint8Array(size)], "b.bin"),
-      new File([new Uint8Array(size)], "c.bin"),
-      new File([new Uint8Array(size)], "d.bin"),
-      new File([new Uint8Array(size)], "e.bin")
+      makeMockFile("a.bin", size),
+      makeMockFile("b.bin", size),
+      makeMockFile("c.bin", size),
+      makeMockFile("d.bin", size)
     ];
     expect(() => enforceFileLimits(files)).toThrow(/Total upload size exceeds/);
   });

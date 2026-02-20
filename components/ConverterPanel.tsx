@@ -193,7 +193,9 @@ export function ConverterPanel({
               onChange={(event) => appendFiles([...(event.target.files ?? [])])}
             />
             <p className="dropzone-title">Drop files here or click to browse</p>
-            <p className="dropzone-meta">{filesCount} selected • max 30 files • max 50MB each</p>
+            <p className="dropzone-meta">
+              {filesCount} selected • max 50 files • max 150MB each • large batches may process slower
+            </p>
           </button>
         </div>
 
