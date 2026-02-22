@@ -1,6 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="96" fill="#f97316"/>
-  <path d="M136 128h176l72 72v184H136z" fill="#fff3e6"/>
-  <path d="M312 128v84h84" fill="none" stroke="#f97316" stroke-width="24"/>
-  <path d="M180 296h156M180 360h156" stroke="#c2410c" stroke-width="24" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="forge-bg-512" x1="52" y1="40" x2="460" y2="486" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffb05b" />
+      <stop offset="0.52" stop-color="#f58a1f" />
+      <stop offset="1" stop-color="#d86600" />
+    </linearGradient>
+    <radialGradient id="forge-glow-512" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(382 122) rotate(137) scale(332)">
+      <stop stop-color="#fff2df" stop-opacity="0.72" />
+      <stop offset="1" stop-color="#fff2df" stop-opacity="0" />
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="116" fill="url(#forge-bg-512)" />
+  <rect x="32" y="32" width="448" height="448" rx="96" fill="url(#forge-glow-512)" />
+  <rect x="112" y="112" width="288" height="288" rx="80" fill="#2e1c10" fill-opacity="0.16" />
+  <path d="M256 145.5 297.72 231.34 390.4 253 323.44 316.22 340.12 406 256 360.47 171.88 406 188.56 316.22 121.6 253l92.68-21.66L256 145.5Z" fill="#fff8ef" />
+  <circle cx="370" cy="144" r="26" fill="#fff8ef" fill-opacity="0.9" />
 </svg>
