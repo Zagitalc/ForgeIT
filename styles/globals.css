@@ -4,40 +4,62 @@
 
 :root {
   color-scheme: light;
-  --bg-base: #f4f4f2;
+  --bg-base: #f6f4ef;
   --bg-elevated: #ffffff;
-  --bg-card: #eef2f7;
-  --text-primary: #171f31;
-  --text-muted: #64748b;
-  --border-subtle: #d2dae6;
+  --bg-card: #eceff4;
+  --text-primary: #1f2937;
+  --text-muted: #6b7280;
+  --border-subtle: rgba(148, 163, 184, 0.45);
   --accent-primary: #f58a1f;
-  --accent-primary-strong: #e6760a;
-  --accent-glow: rgba(245, 138, 31, 0.24);
-  --accent-contrast: #ffffff;
-  --secondary-cta: #0f1b3d;
+  --accent-primary-strong: #e87809;
+  --accent-glow: rgba(245, 138, 31, 0.3);
+  --accent-contrast: #fffaf3;
+  --secondary-cta: #1f2a44;
   --success: #16a34a;
   --warning: #b45309;
   --danger: #e11d48;
-  --focus-ring: #ff9b3b;
+  --focus-ring: #f59f42;
+  --glass-bg-soft: rgba(255, 255, 255, 0.58);
+  --glass-bg-strong: rgba(255, 255, 255, 0.78);
+  --glass-border-soft: rgba(255, 255, 255, 0.42);
+  --glass-border-strong: rgba(240, 246, 255, 0.7);
+  --glass-shadow-soft: 0 16px 28px -22px rgba(31, 41, 55, 0.33);
+  --glass-shadow-strong: 0 22px 44px -28px rgba(31, 41, 55, 0.4);
+  --glass-blur-soft: 12px;
+  --glass-blur-strong: 18px;
+  --radius-card: 1.75rem;
+  --radius-control: 1.05rem;
+  --radius-pill: 999px;
+  --motion-fast: 150ms;
+  --motion-normal: 220ms;
+  --motion-ease: cubic-bezier(0.2, 0.7, 0.24, 1);
 }
 
 .dark {
   color-scheme: dark;
-  --bg-base: #130d09;
-  --bg-elevated: #20140d;
-  --bg-card: #2a1a11;
-  --text-primary: #f7ebdd;
-  --text-muted: #c7ab8f;
-  --border-subtle: #52311d;
-  --accent-primary: #ff8d1f;
+  --bg-base: #17110c;
+  --bg-elevated: #24170f;
+  --bg-card: #2a1c12;
+  --text-primary: #f7ecdf;
+  --text-muted: #c8aa8d;
+  --border-subtle: rgba(95, 62, 35, 0.8);
+  --accent-primary: #ff9228;
   --accent-primary-strong: #ff7a00;
-  --accent-glow: rgba(255, 141, 31, 0.42);
-  --accent-contrast: #fffaf3;
-  --secondary-cta: #3f2d20;
+  --accent-glow: rgba(255, 146, 40, 0.45);
+  --accent-contrast: #fffaf1;
+  --secondary-cta: #3d2c1e;
   --success: #2dd47c;
   --warning: #ffb454;
   --danger: #ff6b7f;
-  --focus-ring: #ff9d3f;
+  --focus-ring: #ffab52;
+  --glass-bg-soft: rgba(45, 29, 18, 0.56);
+  --glass-bg-strong: rgba(45, 29, 18, 0.78);
+  --glass-border-soft: rgba(255, 224, 191, 0.1);
+  --glass-border-strong: rgba(255, 224, 191, 0.17);
+  --glass-shadow-soft: 0 18px 28px -20px rgba(0, 0, 0, 0.6);
+  --glass-shadow-strong: 0 26px 46px -24px rgba(0, 0, 0, 0.72);
+  --glass-blur-soft: 16px;
+  --glass-blur-strong: 24px;
 }
 
 body {
@@ -45,14 +67,54 @@ body {
   min-height: 100vh;
   color: var(--text-primary);
   background:
-    radial-gradient(circle at 10% 0%, rgba(255, 141, 31, 0.1), transparent 38%),
-    radial-gradient(circle at 90% 100%, rgba(255, 141, 31, 0.12), transparent 42%),
-    var(--bg-base);
+    radial-gradient(circle at 8% -4%, rgba(245, 138, 31, 0.24), transparent 44%),
+    radial-gradient(circle at 92% 108%, rgba(245, 138, 31, 0.2), transparent 46%),
+    linear-gradient(158deg, color-mix(in srgb, var(--bg-base) 93%, white), var(--bg-base));
+}
+
+@keyframes fade-up-soft {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes glass-pulse-soft {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+  }
+
+  50% {
+    box-shadow: 0 0 0 5px color-mix(in srgb, var(--accent-primary) 22%, transparent);
+  }
+}
+
+.fade-up-soft {
+  animation: fade-up-soft var(--motion-normal) var(--motion-ease) both;
+}
+
+.glass-pulse-soft {
+  animation: glass-pulse-soft 2.4s var(--motion-ease) infinite;
+}
+
+.press-scale {
+  transition: transform var(--motion-fast) var(--motion-ease);
+}
+
+.press-scale:active {
+  transform: scale(0.985);
 }
 
 @layer components {
   .app-shell {
     @apply mx-auto flex min-h-screen w-full max-w-6xl flex-col;
+    position: relative;
   }
 
   .app-shell-content {
@@ -60,9 +122,12 @@ body {
   }
 
   .topbar {
-    @apply sticky top-0 z-40 border-b px-3 py-3 backdrop-blur sm:px-4 md:px-6;
-    border-color: var(--border-subtle);
-    background: color-mix(in srgb, var(--bg-elevated) 90%, transparent);
+    @apply sticky top-0 z-40 border-b px-3 py-3 sm:px-4 md:px-6;
+    border-color: var(--glass-border-soft);
+    background: var(--glass-bg-strong);
+    backdrop-filter: blur(var(--glass-blur-strong));
+    -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+    box-shadow: var(--glass-shadow-soft);
   }
 
   .topbar-brand {
@@ -70,9 +135,16 @@ body {
   }
 
   .brand-mark {
-    @apply inline-flex h-9 w-9 items-center justify-center rounded-full text-lg font-bold;
-    background: color-mix(in srgb, var(--accent-primary) 25%, transparent);
-    color: var(--accent-primary);
+    @apply inline-flex h-10 w-10 items-center justify-center;
+    border-radius: var(--radius-control);
+    color: color-mix(in srgb, var(--accent-primary) 92%, white);
+    background: color-mix(in srgb, var(--glass-bg-strong) 94%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent-primary) 34%, var(--glass-border-strong));
+    backdrop-filter: blur(calc(var(--glass-blur-soft) * 0.75));
+    -webkit-backdrop-filter: blur(calc(var(--glass-blur-soft) * 0.75));
+    box-shadow:
+      inset 0 1px 0 color-mix(in srgb, white 70%, transparent),
+      0 8px 18px -14px color-mix(in srgb, var(--accent-primary) 55%, transparent);
   }
 
   .brand-title {
@@ -80,7 +152,7 @@ body {
   }
 
   .brand-subtitle {
-    @apply text-[10px] font-semibold uppercase tracking-[0.24em];
+    @apply text-[10px] font-semibold uppercase tracking-[0.22em];
     color: var(--accent-primary);
   }
 
@@ -89,43 +161,69 @@ body {
   }
 
   .topbar-tooltip {
-    @apply absolute right-3 top-[calc(100%-0.5rem)] z-50 w-72 rounded-xl border p-3 text-xs shadow-xl md:right-6;
-    border-color: var(--border-subtle);
+    @apply absolute right-3 top-[calc(100%-0.5rem)] z-50 w-72 border p-3 text-xs md:right-6;
+    border-radius: var(--radius-control);
+    border-color: var(--glass-border-strong);
     color: var(--text-muted);
-    background: var(--bg-elevated);
+    background: var(--glass-bg-strong);
+    backdrop-filter: blur(var(--glass-blur-soft));
+    -webkit-backdrop-filter: blur(var(--glass-blur-soft));
+    box-shadow: var(--glass-shadow-strong);
   }
 
   .health-pill {
-    @apply rounded-full border px-3 py-1 text-xs font-semibold;
+    @apply border px-3 py-1 text-xs font-semibold;
+    border-radius: var(--radius-pill);
+    backdrop-filter: blur(calc(var(--glass-blur-soft) * 0.65));
+    -webkit-backdrop-filter: blur(calc(var(--glass-blur-soft) * 0.65));
   }
 
   .health-pill-ready {
-    border-color: color-mix(in srgb, var(--success) 35%, transparent);
-    color: color-mix(in srgb, var(--success) 82%, white);
+    border-color: color-mix(in srgb, var(--success) 40%, transparent);
+    color: color-mix(in srgb, var(--success) 80%, white);
     background: color-mix(in srgb, var(--success) 16%, transparent);
   }
 
   .health-pill-missing {
-    border-color: color-mix(in srgb, var(--danger) 35%, transparent);
-    color: color-mix(in srgb, var(--danger) 90%, white);
+    border-color: color-mix(in srgb, var(--danger) 38%, transparent);
+    color: color-mix(in srgb, var(--danger) 88%, white);
     background: color-mix(in srgb, var(--danger) 14%, transparent);
   }
 
   .icon-btn {
-    @apply inline-flex h-9 w-9 items-center justify-center rounded-full border text-sm font-semibold transition;
-    border-color: var(--border-subtle);
+    @apply inline-flex h-10 w-10 items-center justify-center border text-sm font-semibold;
+    border-radius: var(--radius-pill);
+    border-color: var(--glass-border-strong);
     color: var(--text-primary);
-    background: color-mix(in srgb, var(--bg-card) 90%, transparent);
+    background: var(--glass-bg-soft);
+    backdrop-filter: blur(var(--glass-blur-soft));
+    -webkit-backdrop-filter: blur(var(--glass-blur-soft));
+    transition:
+      transform var(--motion-fast) var(--motion-ease),
+      border-color var(--motion-fast) var(--motion-ease),
+      background-color var(--motion-fast) var(--motion-ease),
+      box-shadow var(--motion-fast) var(--motion-ease);
   }
 
   .icon-btn:hover {
-    box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-primary) 50%, transparent);
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--accent-primary) 42%, var(--glass-border-strong));
+    box-shadow: var(--glass-shadow-soft);
+  }
+
+  .icon-btn:active {
+    transform: scale(0.97);
   }
 
   .section-card {
-    @apply rounded-3xl border p-4 shadow-sm;
-    border-color: var(--border-subtle);
-    background: linear-gradient(165deg, color-mix(in srgb, var(--bg-elevated) 96%, transparent), var(--bg-card));
+    @apply border p-4;
+    border-radius: var(--radius-card);
+    border-color: var(--glass-border-strong);
+    background: linear-gradient(160deg, var(--glass-bg-strong), var(--glass-bg-soft));
+    backdrop-filter: blur(var(--glass-blur-soft));
+    -webkit-backdrop-filter: blur(var(--glass-blur-soft));
+    box-shadow: var(--glass-shadow-soft);
+    animation: fade-up-soft var(--motion-normal) var(--motion-ease) both;
   }
 
   .section-head {
@@ -137,24 +235,43 @@ body {
   }
 
   .section-subcard {
-    @apply rounded-2xl border p-3;
-    border-color: var(--border-subtle);
-    background: color-mix(in srgb, var(--bg-card) 70%, var(--bg-elevated));
+    @apply border p-3;
+    border-radius: calc(var(--radius-card) - 0.45rem);
+    border-color: var(--glass-border-soft);
+    background: color-mix(in srgb, var(--glass-bg-soft) 92%, transparent);
+    backdrop-filter: blur(calc(var(--glass-blur-soft) * 0.85));
+    -webkit-backdrop-filter: blur(calc(var(--glass-blur-soft) * 0.85));
   }
 
   .tool-tabs {
     @apply mb-4 flex items-center gap-2 border-b pb-3;
-    border-color: var(--border-subtle);
+    border-color: color-mix(in srgb, var(--border-subtle) 60%, transparent);
   }
 
   .tool-tab {
-    @apply rounded-full px-4 py-2 text-sm font-semibold transition;
+    @apply px-4 py-2 text-sm font-semibold;
+    border-radius: var(--radius-pill);
+    border: 1px solid transparent;
+    box-shadow: none;
     color: var(--text-muted);
+    background: transparent;
+    transition:
+      color var(--motion-fast) var(--motion-ease),
+      border-color var(--motion-fast) var(--motion-ease),
+      background-color var(--motion-fast) var(--motion-ease),
+      transform var(--motion-fast) var(--motion-ease);
+  }
+
+  .tool-tab:hover {
+    transform: translateY(-1px);
+    background: color-mix(in srgb, var(--accent-primary) 11%, transparent);
   }
 
   .tool-tab-active {
     color: var(--accent-primary);
-    box-shadow: inset 0 -2px 0 var(--accent-primary);
+    border-color: color-mix(in srgb, var(--accent-primary) 58%, var(--glass-border-strong));
+    background: color-mix(in srgb, var(--accent-primary) 9%, var(--glass-bg-soft));
+    box-shadow: 0 4px 10px -8px color-mix(in srgb, var(--accent-primary) 35%, transparent);
   }
 
   .field-label {
@@ -169,10 +286,17 @@ body {
 
   .text-input,
   .select-input {
-    @apply w-full rounded-full border px-4 py-2.5 text-sm outline-none transition;
-    border-color: var(--border-subtle);
+    @apply w-full border px-4 py-2.5 text-sm outline-none;
+    border-radius: var(--radius-control);
+    border-color: var(--glass-border-strong);
     color: var(--text-primary);
-    background: color-mix(in srgb, var(--bg-elevated) 85%, transparent);
+    background: color-mix(in srgb, var(--glass-bg-strong) 86%, transparent);
+    backdrop-filter: blur(calc(var(--glass-blur-soft) * 0.8));
+    -webkit-backdrop-filter: blur(calc(var(--glass-blur-soft) * 0.8));
+    transition:
+      border-color var(--motion-fast) var(--motion-ease),
+      box-shadow var(--motion-fast) var(--motion-ease),
+      transform var(--motion-fast) var(--motion-ease);
   }
 
   .select-input {
@@ -180,18 +304,34 @@ body {
   }
 
   .text-input::placeholder {
-    color: color-mix(in srgb, var(--text-muted) 90%, transparent);
+    color: color-mix(in srgb, var(--text-muted) 88%, transparent);
   }
 
   .dropzone {
-    @apply rounded-3xl border-2 border-dashed p-6 text-center transition;
-    border-color: color-mix(in srgb, var(--accent-primary) 48%, transparent);
-    background: color-mix(in srgb, var(--bg-card) 55%, var(--bg-elevated));
+    @apply border-2 border-dashed p-6 text-center;
+    border-radius: var(--radius-card);
+    border-color: color-mix(in srgb, var(--accent-primary) 45%, transparent);
+    color: var(--text-primary);
+    background: color-mix(in srgb, var(--glass-bg-soft) 87%, transparent);
+    backdrop-filter: blur(var(--glass-blur-soft));
+    -webkit-backdrop-filter: blur(var(--glass-blur-soft));
+    box-shadow: var(--glass-shadow-soft);
+    transition:
+      background-color var(--motion-normal) var(--motion-ease),
+      border-color var(--motion-normal) var(--motion-ease),
+      transform var(--motion-fast) var(--motion-ease),
+      box-shadow var(--motion-normal) var(--motion-ease);
+  }
+
+  .dropzone:hover {
+    transform: translateY(-2px);
+    border-color: color-mix(in srgb, var(--accent-primary) 60%, transparent);
   }
 
   .dropzone-active {
-    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 46%, transparent);
-    background: color-mix(in srgb, var(--accent-primary) 12%, var(--bg-card));
+    transform: translateY(-2px);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent-primary) 42%, transparent), var(--glass-shadow-strong);
+    background: color-mix(in srgb, var(--accent-primary) 12%, var(--glass-bg-soft));
   }
 
   .dropzone-title {
@@ -208,22 +348,27 @@ body {
   }
 
   .file-item {
-    @apply flex items-center justify-between gap-3 rounded-2xl border px-3 py-2 text-sm;
-    border-color: var(--border-subtle);
-    background: color-mix(in srgb, var(--bg-card) 72%, var(--bg-elevated));
+    @apply flex items-center justify-between gap-3 border px-3 py-2 text-sm;
+    border-radius: calc(var(--radius-card) - 0.45rem);
+    border-color: var(--glass-border-soft);
+    background: color-mix(in srgb, var(--glass-bg-strong) 82%, transparent);
+    backdrop-filter: blur(calc(var(--glass-blur-soft) * 0.75));
+    -webkit-backdrop-filter: blur(calc(var(--glass-blur-soft) * 0.75));
   }
 
   .file-date-pill {
-    @apply mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold;
+    @apply mt-1 inline-flex px-2 py-0.5 text-[11px] font-semibold;
+    border-radius: var(--radius-pill);
     color: color-mix(in srgb, var(--success) 82%, white);
     background: color-mix(in srgb, var(--success) 14%, transparent);
-    border: 1px solid color-mix(in srgb, var(--success) 35%, transparent);
+    border: 1px solid color-mix(in srgb, var(--success) 36%, transparent);
   }
 
   .filename-date-config {
-    @apply mt-3 space-y-2 rounded-2xl border p-3;
-    border-color: var(--border-subtle);
-    background: color-mix(in srgb, var(--bg-card) 65%, var(--bg-elevated));
+    @apply mt-3 space-y-2 border p-3;
+    border-radius: calc(var(--radius-card) - 0.45rem);
+    border-color: var(--glass-border-soft);
+    background: color-mix(in srgb, var(--glass-bg-soft) 90%, transparent);
   }
 
   .filename-date-summary {
@@ -246,10 +391,24 @@ body {
   }
 
   .chip {
-    @apply rounded-full border px-3 py-1 text-xs font-medium transition;
-    border-color: color-mix(in srgb, var(--accent-primary) 45%, transparent);
+    @apply border px-3 py-1 text-xs font-medium;
+    border-radius: var(--radius-pill);
+    border-color: color-mix(in srgb, var(--accent-primary) 42%, transparent);
     color: var(--accent-primary);
-    background: color-mix(in srgb, var(--accent-primary) 8%, transparent);
+    background: color-mix(in srgb, var(--accent-primary) 9%, transparent);
+    transition:
+      transform var(--motion-fast) var(--motion-ease),
+      background-color var(--motion-fast) var(--motion-ease),
+      box-shadow var(--motion-fast) var(--motion-ease);
+  }
+
+  .chip:hover {
+    transform: translateY(-1px);
+    background: color-mix(in srgb, var(--accent-primary) 16%, transparent);
+  }
+
+  .chip:active {
+    transform: scale(0.97);
   }
 
   .preview-text,
@@ -262,14 +421,28 @@ body {
 
   .inline-code {
     @apply rounded px-1 py-0.5 font-mono text-[11px];
-    background: color-mix(in srgb, var(--bg-card) 80%, transparent);
+    background: color-mix(in srgb, var(--glass-bg-soft) 84%, transparent);
   }
 
   .primary-cta {
-    @apply inline-flex w-full items-center justify-center rounded-full px-5 py-3 text-lg font-semibold transition;
+    @apply inline-flex w-full items-center justify-center px-5 py-3 text-lg font-semibold;
+    border-radius: calc(var(--radius-control) + 0.2rem);
     color: var(--accent-contrast);
     background: linear-gradient(135deg, var(--accent-primary), var(--accent-primary-strong));
-    box-shadow: 0 12px 30px -16px var(--accent-glow);
+    box-shadow: 0 16px 32px -18px var(--accent-glow);
+    transition:
+      transform var(--motion-fast) var(--motion-ease),
+      filter var(--motion-fast) var(--motion-ease),
+      box-shadow var(--motion-fast) var(--motion-ease);
+  }
+
+  .primary-cta:hover {
+    filter: saturate(1.05);
+    transform: translateY(-1px);
+  }
+
+  .primary-cta:active {
+    transform: scale(0.985);
   }
 
   .primary-cta:disabled {
@@ -277,21 +450,39 @@ body {
   }
 
   .action-btn {
-    @apply inline-flex items-center justify-center rounded-2xl border px-3 py-2 text-xs font-semibold transition;
-    border-color: var(--border-subtle);
+    @apply inline-flex items-center justify-center border px-3 py-2 text-xs font-semibold;
+    border-radius: var(--radius-control);
+    border-color: var(--glass-border-strong);
     color: var(--text-primary);
-    background: color-mix(in srgb, var(--bg-card) 85%, transparent);
+    background: color-mix(in srgb, var(--glass-bg-soft) 88%, transparent);
+    backdrop-filter: blur(calc(var(--glass-blur-soft) * 0.8));
+    -webkit-backdrop-filter: blur(calc(var(--glass-blur-soft) * 0.8));
+    transition:
+      transform var(--motion-fast) var(--motion-ease),
+      border-color var(--motion-fast) var(--motion-ease),
+      background-color var(--motion-fast) var(--motion-ease),
+      box-shadow var(--motion-fast) var(--motion-ease);
+  }
+
+  .action-btn:hover {
+    transform: translateY(-1px);
+    border-color: color-mix(in srgb, var(--accent-primary) 38%, var(--glass-border-strong));
+    box-shadow: var(--glass-shadow-soft);
+  }
+
+  .action-btn:active {
+    transform: scale(0.98);
   }
 
   .action-btn-secondary {
     color: var(--accent-contrast);
     background: var(--secondary-cta);
-    border-color: color-mix(in srgb, var(--secondary-cta) 90%, white);
+    border-color: color-mix(in srgb, var(--secondary-cta) 88%, white);
   }
 
   .action-btn-danger {
     color: var(--danger);
-    border-color: color-mix(in srgb, var(--danger) 35%, transparent);
+    border-color: color-mix(in srgb, var(--danger) 38%, transparent);
   }
 
   .queue-stats {
@@ -299,10 +490,13 @@ body {
   }
 
   .queue-stat {
-    @apply rounded-2xl border px-3 py-2 text-xs uppercase tracking-[0.12em];
-    border-color: var(--border-subtle);
+    @apply border px-3 py-2 text-xs uppercase tracking-[0.12em];
+    border-radius: calc(var(--radius-control) + 0.1rem);
+    border-color: var(--glass-border-soft);
     color: var(--text-muted);
-    background: color-mix(in srgb, var(--bg-card) 80%, transparent);
+    background: color-mix(in srgb, var(--glass-bg-soft) 85%, transparent);
+    backdrop-filter: blur(calc(var(--glass-blur-soft) * 0.75));
+    -webkit-backdrop-filter: blur(calc(var(--glass-blur-soft) * 0.75));
   }
 
   .queue-stat strong {
@@ -311,9 +505,10 @@ body {
   }
 
   .queue-active {
-    @apply rounded-2xl border p-3 text-xs;
-    border-color: color-mix(in srgb, var(--accent-primary) 40%, transparent);
-    background: color-mix(in srgb, var(--accent-primary) 10%, var(--bg-card));
+    @apply border p-3 text-xs;
+    border-radius: calc(var(--radius-control) + 0.1rem);
+    border-color: color-mix(in srgb, var(--accent-primary) 38%, transparent);
+    background: color-mix(in srgb, var(--accent-primary) 10%, var(--glass-bg-soft));
   }
 
   .queue-active-label {
@@ -322,10 +517,11 @@ body {
   }
 
   .queue-policy {
-    @apply rounded-2xl border p-3 text-xs;
-    border-color: var(--border-subtle);
+    @apply border p-3 text-xs;
+    border-radius: calc(var(--radius-control) + 0.1rem);
+    border-color: var(--glass-border-soft);
     color: var(--text-muted);
-    background: color-mix(in srgb, var(--bg-card) 70%, transparent);
+    background: color-mix(in srgb, var(--glass-bg-soft) 85%, transparent);
   }
 
   .history-table {
@@ -334,11 +530,11 @@ body {
 
   .history-table thead th {
     @apply border-b py-2;
-    border-color: var(--border-subtle);
+    border-color: color-mix(in srgb, var(--border-subtle) 70%, transparent);
   }
 
   .history-table tbody tr {
-    border-bottom: 1px solid var(--border-subtle);
+    border-bottom: 1px solid color-mix(in srgb, var(--border-subtle) 65%, transparent);
   }
 
   .history-table tbody td {
@@ -354,9 +550,13 @@ body {
   }
 
   .history-card {
-    @apply rounded-3xl border p-3;
-    border-color: var(--border-subtle);
-    background: color-mix(in srgb, var(--bg-card) 75%, var(--bg-elevated));
+    @apply border p-3;
+    border-radius: var(--radius-card);
+    border-color: var(--glass-border-soft);
+    background: color-mix(in srgb, var(--glass-bg-soft) 90%, transparent);
+    backdrop-filter: blur(var(--glass-blur-soft));
+    -webkit-backdrop-filter: blur(var(--glass-blur-soft));
+    box-shadow: var(--glass-shadow-soft);
   }
 
   .history-card-head {
@@ -382,19 +582,44 @@ body {
   }
 
   .bottom-nav {
-    @apply fixed bottom-0 left-0 right-0 z-40 grid grid-cols-4 border-t px-2 py-2 backdrop-blur;
-    border-color: var(--border-subtle);
-    background: color-mix(in srgb, var(--bg-elevated) 93%, transparent);
+    @apply fixed bottom-0 left-0 right-0 z-40 grid grid-cols-4 border-t px-2 py-2;
+    border-color: var(--glass-border-soft);
+    background: color-mix(in srgb, var(--glass-bg-strong) 96%, transparent);
+    backdrop-filter: blur(var(--glass-blur-strong));
+    -webkit-backdrop-filter: blur(var(--glass-blur-strong));
+    box-shadow: 0 -8px 30px -20px rgba(0, 0, 0, 0.5);
   }
 
   .bottom-nav-item {
-    @apply inline-flex flex-col items-center justify-center gap-1 rounded-xl px-2 py-1 text-[11px] font-semibold transition;
+    @apply inline-flex flex-col items-center justify-center gap-1 px-2 py-1 text-[11px] font-semibold;
+    border-radius: calc(var(--radius-control) - 0.15rem);
     color: var(--text-muted);
+    transition:
+      color var(--motion-fast) var(--motion-ease),
+      transform var(--motion-fast) var(--motion-ease),
+      background-color var(--motion-fast) var(--motion-ease);
+  }
+
+  .bottom-nav-item:hover {
+    transform: translateY(-1px);
+    background: color-mix(in srgb, var(--accent-primary) 8%, transparent);
+  }
+
+  .bottom-nav-item:active {
+    transform: scale(0.98);
   }
 
   .bottom-nav-item-active {
     color: var(--accent-primary);
-    background: color-mix(in srgb, var(--accent-primary) 13%, transparent);
+    background: color-mix(in srgb, var(--accent-primary) 12%, transparent);
+  }
+
+  .bottom-nav-icon-wrap {
+    @apply inline-flex h-5 w-5 items-center justify-center;
+  }
+
+  .bottom-nav-icon {
+    @apply h-4 w-4;
   }
 
   .toast-stack {
@@ -402,7 +627,12 @@ body {
   }
 
   .toast {
-    @apply rounded-2xl border px-3 py-2 text-sm shadow-lg;
+    @apply border px-3 py-2 text-sm;
+    border-radius: calc(var(--radius-control) + 0.1rem);
+    backdrop-filter: blur(var(--glass-blur-soft));
+    -webkit-backdrop-filter: blur(var(--glass-blur-soft));
+    box-shadow: var(--glass-shadow-strong);
+    animation: fade-up-soft var(--motion-normal) var(--motion-ease) both;
   }
 
   .toast-success {
@@ -420,11 +650,14 @@ body {
   .toast-info {
     color: var(--text-primary);
     border-color: color-mix(in srgb, var(--accent-primary) 40%, transparent);
-    background: color-mix(in srgb, var(--accent-primary) 12%, var(--bg-card));
+    background: color-mix(in srgb, var(--accent-primary) 12%, var(--glass-bg-soft));
   }
 
   .status-pill {
-    @apply rounded-full border px-2.5 py-1 text-xs font-semibold capitalize;
+    @apply border px-2.5 py-1 text-xs font-semibold capitalize;
+    border-radius: var(--radius-pill);
+    backdrop-filter: blur(calc(var(--glass-blur-soft) * 0.7));
+    -webkit-backdrop-filter: blur(calc(var(--glass-blur-soft) * 0.7));
   }
 
   .status-pill-success {
@@ -452,9 +685,19 @@ body {
   }
 
   .settings-card {
-    @apply rounded-3xl border p-4;
-    border-color: var(--border-subtle);
-    background: color-mix(in srgb, var(--bg-card) 75%, var(--bg-elevated));
+    @apply border p-4;
+    border-radius: var(--radius-card);
+    border-color: var(--glass-border-soft);
+    background: color-mix(in srgb, var(--glass-bg-soft) 90%, transparent);
+  }
+
+  .icon-svg {
+    @apply h-4 w-4;
+  }
+
+  .icon-svg-brand {
+    height: 18px;
+    width: 18px;
   }
 }
 

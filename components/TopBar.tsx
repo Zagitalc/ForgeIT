@@ -1,3 +1,4 @@
+import { ForgeSparkIcon, InfoIcon } from "@/components/icons";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 type TopBarProps = {
@@ -10,10 +11,10 @@ type TopBarProps = {
 
 export function TopBar({ title, subtitle, libreOfficeAvailable, showInfo, onToggleInfo }: TopBarProps) {
   return (
-    <header className="topbar">
+    <header className="topbar fade-up-soft">
       <div className="topbar-brand" aria-label="ForgeIT brand">
         <span className="brand-mark" aria-hidden="true">
-          ✦
+          <ForgeSparkIcon className="icon-svg icon-svg-brand" />
         </span>
         <div>
           <h1 className="brand-title">{title}</h1>
@@ -22,7 +23,11 @@ export function TopBar({ title, subtitle, libreOfficeAvailable, showInfo, onTogg
       </div>
 
       <div className="topbar-actions">
-        <span className={`health-pill ${libreOfficeAvailable ? "health-pill-ready" : "health-pill-missing"}`}>
+        <span
+          className={`health-pill ${
+            libreOfficeAvailable ? "health-pill-ready glass-pulse-soft" : "health-pill-missing"
+          }`}
+        >
           LibreOffice {libreOfficeAvailable ? "Ready" : "Missing"}
         </span>
         <button
@@ -32,7 +37,7 @@ export function TopBar({ title, subtitle, libreOfficeAvailable, showInfo, onTogg
           aria-label="Offline scope and dependency info"
           aria-expanded={showInfo}
         >
-          i
+          <InfoIcon className="icon-svg" />
         </button>
         <ThemeToggle />
       </div>

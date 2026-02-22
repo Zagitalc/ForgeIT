@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 
+import { MoonIcon, SunIcon } from "@/components/icons";
+
 const STORAGE_KEY = "forgeit-theme";
 
 export function ThemeToggle() {
@@ -30,7 +32,7 @@ export function ThemeToggle() {
       aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
       data-testid="theme-toggle"
     >
-      <span aria-hidden="true">{theme === "dark" ? "☾" : "☀"}</span>
+      {theme === "dark" ? <SunIcon className="icon-svg" /> : <MoonIcon className="icon-svg" />}
     </button>
   );
 }
